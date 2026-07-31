@@ -102,6 +102,27 @@ const TYPE_FIELDS = {
   browser: ["name", "enabled", "url", "browser_w", "browser_h", "browser_fps"],
 };
 
+// 图片/媒体：先上传到服务器，自动填路径
+async function doUpload() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = type.value === "image" ? "image/*" : "video/*,audio/*";
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const url =
+        type.value === "image" ? "/api/upload/image" : "/api/upload/media";
+      const r = await api.upload(url, file);
+      form.value.file_path = r.path;
+      toast("上传成功，路径已填入", "ok");
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+  input.click();
+}
+
 async function create() {
   const allowed = TYPE_FIELDS[type.value] || ["name", "enabled"];
   const payload = { type: type.value };
@@ -254,13 +275,18 @@ async function create() {
         <!-- 图片/媒体 -->
         <template v-else-if="type === 'image' || type === 'media_file'">
           <div class="field">
-            <label>文件路径</label
-            ><input
-              v-model="form.file_path"
-              :placeholder="
-                type === 'image' ? 'uploads/xxx.png' : 'uploads/xxx.mp4'
-              "
-            />
+            <label>文件路径</label>
+            <div class="upload-row">
+              <input
+                v-model="form.file_path"
+                :placeholder="
+                  type === 'image' ? 'uploads/xxx.png' : 'uploads/xxx.mp4'
+                "
+              />
+              <button class="btn small" @click="doUpload">
+                ⬆ 上传{{ type === "image" ? "图片" : "文件" }}
+              </button>
+            </div>
           </div>
           <label class="check"
             ><input type="checkbox" v-model="form.loop" /> 循环{{
@@ -384,6 +410,18 @@ async function create() {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+.upload-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.upload-row input {
+  flex: 1;
+  min-width: 0;
+}
+.upload-row .btn {
+  flex-shrink: 0;
 }
 .check {
   display: flex;

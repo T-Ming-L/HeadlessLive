@@ -30,6 +30,13 @@ const (
 	InputRTMP   InputKind = "rtmp"
 	InputALSA   InputKind = "alsa"
 	InputPulse  InputKind = "pulse"
+	InputText   InputKind = "text"
+)
+
+// 文字源渲染画布尺寸（场景内会被等比缩放铺满场景项，字体大小以此画布为基准）
+const (
+	textCanvasW = 1280
+	textCanvasH = 720
 )
 
 // Input 一个 FFmpeg 输入
@@ -238,7 +245,7 @@ func buildVideoInput(src *model.Source) (*Input, error) {
 
 	case model.SourceImage:
 		if src.FilePath == "" {
-			return nil, fmt.Errorf("图片源缺少文件路径")
+			return nil, fmt.Errorf("%w: 图片源缺少文件路径", ErrDeviceUnavailable)
 		}
 		if _, err := os.Stat(src.FilePath); err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrDeviceUnavailable, src.FilePath)
@@ -246,6 +253,30 @@ func buildVideoInput(src *model.Source) (*Input, error) {
 		in.Kind = InputImage
 		in.params = []string{"-loop", "1"}
 		in.path = src.FilePath
+
+	case model.SourceText:
+		if src.Text == "" {
+			return nil, fmt.Errorf("%w: 文字源缺少内容", ErrDeviceUnavailable)
+		}
+		// 用 lavfi 生成透明画布 + drawtext 文字层
+		// （textfile 传内容避免转义，画布 1280x720，场景内等比缩放铺满场景项）
+		tf, err := writeDrawTextFile(src.Text)
+		if err != nil {
+			return nil, fmt.Errorf("文字源: %w", err)
+		}
+		fs := src.FontSize
+		if fs <= 0 {
+			fs = 48
+		}
+		fc := src.FontColor
+		if fc == "" {
+			fc = "white"
+		}
+		in.Kind = InputText
+		in.params = []string{"-f", "lavfi", "-i", fmt.Sprintf(
+			"color=c=black@0.0:s=%dx%d:r=30,drawtext=textfile='%s':fontsize=%d:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2",
+			textCanvasW, textCanvasH, tf, fs, fc)}
+		in.path = ""
 
 	case model.SourceColor:
 		// 用 lavfi 生成纯色，尺寸任意（场景内会被 scale 到目标大小）
@@ -260,13 +291,16 @@ func buildVideoInput(src *model.Source) (*Input, error) {
 
 	case model.SourceMediaFile:
 		if src.FilePath == "" {
-			return nil, fmt.Errorf("媒体文件源缺少文件路径")
+			return nil, fmt.Errorf("%w: 媒体文件源缺少文件路径", ErrDeviceUnavailable)
 		}
 		if _, err := os.Stat(src.FilePath); err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrDeviceUnavailable, src.FilePath)
 		}
 		in.Kind = InputFile
 		in.HasAudio = true
+		if src.Loop {
+			in.params = []string{"-stream_loop", "-1"}
+		}
 		in.path = src.FilePath
 
 	case model.SourceScreen, model.SourceBrowser:
@@ -467,6 +501,24 @@ func (rs *RenderSpec) buildFilter(w, h, fps int, videoItems []model.SceneItem,
 	return nil
 }
 
+// writeDrawTextFile 将文字内容写入临时文件（drawtext textfile 用，避免转义）。
+// drawtext 会把 %{...} 当展开序列，字面 % 需写成 %%
+func writeDrawTextFile(content string) (string, error) {
+	content = strings.ReplaceAll(content, "%", "%%")
+	f, err := os.CreateTemp("", "headlesslive-text-*.txt")
+	if err != nil {
+		return "", err
+	}
+	if _, err := f.WriteString(content); err != nil {
+		f.Close()
+		return "", err
+	}
+	if err := f.Close(); err != nil {
+		return "", err
+	}
+	return f.Name(), nil
+}
+
 // buildSourceFilters 构建单个源 + 场景项的滤镜链（crop → scale → 透明度）
 // 返回滤镜片段（不含标签），如 ["crop=100:100:0:0","scale=640:360","format=rgba,colorchannelmixer=aa=0.5"]
 func buildSourceFilters(src *model.Source, it *model.SceneItem) []string {
@@ -484,9 +536,15 @@ func buildSourceFilters(src *model.Source, it *model.SceneItem) []string {
 		parts = append(parts, fmt.Sprintf("crop=%d:%d:%d:%d", cw, ch, cx, cy))
 	}
 
-	// 2. 缩放
+	// 2. 缩放（文字源：等比放大铺满并居中裁剪，避免文字被拉伸变形）
 	if it.Width > 0 && it.Height > 0 {
-		parts = append(parts, fmt.Sprintf("scale=%d:%d", it.Width, it.Height))
+		if src.Type == model.SourceText {
+			parts = append(parts, fmt.Sprintf(
+				"scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d",
+				it.Width, it.Height, it.Width, it.Height))
+		} else {
+			parts = append(parts, fmt.Sprintf("scale=%d:%d", it.Width, it.Height))
+		}
 	}
 
 	// 3. 源级滤镜（按顺序）

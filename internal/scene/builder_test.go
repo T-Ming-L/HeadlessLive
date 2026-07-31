@@ -1,6 +1,7 @@
 package scene
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,6 +57,66 @@ func TestBuildColorSpace(t *testing.T) {
 		if !strings.Contains(joined, want) {
 			t.Errorf("缺少 %q: %s", want, joined)
 		}
+	}
+}
+
+func TestBuildImage(t *testing.T) {
+	tmp := filepath.Join(t.TempDir(), "logo.png")
+	if err := os.WriteFile(tmp, []byte("x"), 0o644); err != nil {
+		t.Fatalf("创建临时图片: %v", err)
+	}
+	src := &model.Source{ID: "img", Name: "Logo", Type: model.SourceImage, Enabled: true, FilePath: tmp}
+	in, err := buildVideoInput(src)
+	if err != nil {
+		t.Fatalf("buildVideoInput: %v", err)
+	}
+	args := in.FFmpegArgs()
+	if strings.Join(args, " ") != "-loop 1 -i "+tmp {
+		t.Errorf("图片参数错误: %v", args)
+	}
+}
+
+func TestBuildText(t *testing.T) {
+	src := &model.Source{ID: "txt", Name: "标题", Type: model.SourceText, Enabled: true,
+		Text: "直播标题", FontSize: 64, FontColor: "#ffffff"}
+	in, err := buildVideoInput(src)
+	if err != nil {
+		t.Fatalf("buildVideoInput: %v", err)
+	}
+	joined := strings.Join(in.FFmpegArgs(), " ")
+	if !strings.Contains(joined, "color=c=black@0.0") {
+		t.Errorf("文字输入应含透明画布: %s", joined)
+	}
+	if !strings.Contains(joined, "drawtext=textfile=") {
+		t.Errorf("文字输入应含 drawtext: %s", joined)
+	}
+	if !strings.Contains(joined, "fontsize=64") || !strings.Contains(joined, "fontcolor=#ffffff") {
+		t.Errorf("缺少字号/颜色: %s", joined)
+	}
+}
+
+func TestBuildTextEmptySkip(t *testing.T) {
+	src := &model.Source{ID: "txt", Name: "标题", Type: model.SourceText, Enabled: true}
+	_, err := buildVideoInput(src)
+	if !errors.Is(err, ErrDeviceUnavailable) {
+		t.Errorf("空文字应返回 ErrDeviceUnavailable，实际 %v", err)
+	}
+}
+
+func TestBuildMediaLoop(t *testing.T) {
+	tmp := filepath.Join(t.TempDir(), "clip.mp4")
+	if err := os.WriteFile(tmp, []byte("x"), 0o644); err != nil {
+		t.Fatalf("创建临时媒体: %v", err)
+	}
+	src := &model.Source{ID: "mv", Name: "片头", Type: model.SourceMediaFile, Enabled: true,
+		FilePath: tmp, Loop: true}
+	in, err := buildVideoInput(src)
+	if err != nil {
+		t.Fatalf("buildVideoInput: %v", err)
+	}
+	args := in.FFmpegArgs()
+	if strings.Join(args, " ") != "-stream_loop -1 -i "+tmp {
+		t.Errorf("媒体循环参数错误: %v", args)
 	}
 }
 
