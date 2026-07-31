@@ -1,0 +1,35 @@
+# 编译产物
+HeadlessLive
+Headless-RTMP
+*.exe
+
+# B 站登录会话（含 Cookie，切勿上传！）
+bilibili_session.json
+
+# 前端构建产物（Vue3+Vite 输出到 static/）
+static/*
+!static/.gitkeep
+
+# 前端依赖
+web/node_modules/
+web/dist/
+
+# 运行时生成的配置
+config.yaml
+scenes.yaml
+
+# 日志文件
+logs/*
+*.log
+
+# 上传素材与录制文件
+uploads/*
+recordings/*
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
