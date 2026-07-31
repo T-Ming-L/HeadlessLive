@@ -23,6 +23,63 @@
 - ✅ **单文件部署**：前端构建产物 embed 进 Go 二进制，一个文件搞定
 - ✅ **B 站直播助手**：扫码登录 → 一键开播获取推流地址/密钥 → 自动填入输出配置（RTMP 推流到 B 站）
 
+## 环境要求
+
+### 运行环境（Linux 服务器）
+
+| 依赖         | 版本/说明                         | 用途                         |
+| ------------ | --------------------------------- | ---------------------------- |
+| Linux        | x86_64（amd64），推荐 Debian/Ubuntu | 部署目标；N100 等小主机即可  |
+| FFmpeg       | 4.x+（含 v4l2 / alsa / vaapi 支持） | 采集、滤镜合成、编码、推流   |
+| v4l-utils    | 任意                              | 采集卡设备探测（`v4l2-ctl`） |
+| alsa-utils   | 任意                              | 声卡设备探测（`arecord`）    |
+| vainfo       | 任意                              | Intel VAAPI 硬编探测         |
+| Xvfb + Chromium | 可选，仅「浏览器源」需要       | 浏览器源渲染与捕获           |
+
+```bash
+sudo apt install ffmpeg v4l-utils vainfo alsa-utils
+# 浏览器源（可选）：
+sudo apt install xvfb chromium
+```
+
+> 硬件：推荐 Intel 核显（VAAPI 硬编，低 CPU 占用）；采集用 USB 采集卡（UVC）+ USB 声卡（如 Synido Voice 100）。
+
+### 编译环境（可选 —— 直接下载 Release 二进制则不需要）
+
+| 依赖    | 版本      | 用途               |
+| ------- | --------- | ------------------ |
+| Go      | 1.22+     | 后端编译           |
+| Node.js | 18+       | 仅构建前端（`web/`）|
+
+> Windows 仅用于本地编译与体验；正式部署目标为 Linux 服务器。
+
+## 依赖与引用
+
+### Go 后端（`go.mod`）
+
+| 库                                        | 版本     | 用途                          |
+| ----------------------------------------- | -------- | ----------------------------- |
+| `github.com/gin-gonic/gin`                | v1.8.1   | HTTP 路由 / REST API          |
+| `github.com/gorilla/websocket`            | v1.5.1   | WebSocket 日志与状态推送      |
+| `gopkg.in/yaml.v3`                        | v3.0.1   | `scenes.yaml` 配置持久化      |
+
+### 前端（`web/`）
+
+| 库     | 版本     | 用途                     |
+| ------ | -------- | ------------------------ |
+| Vue    | 3.x      | 前端框架                 |
+| Vite   | 5.x      | 构建工具                 |
+| qrcode | ^1.5.4   | B 站扫码登录二维码生成   |
+
+### 系统级依赖
+
+- **FFmpeg**：核心引擎（采集 → 滤镜 → 编码 → 推流）
+- **Chromium + Xvfb**：浏览器源（可选）
+
+### 参考项目
+
+- [GamerNoTitle/BiliLive-Utility](https://github.com/GamerNoTitle/BiliLive-Utility)（AGPL-3.0）—— 本项目的 `internal/bilibili` 按其公开的 **B 站直播接口协议**（扫码登录 / 开播 / 取推流密钥）独立编写的 Go 实现，未引用其源代码。
+
 ## 架构
 
 ```
