@@ -87,30 +87,95 @@ func (m *Manager) Ensure(disp, url string, w, h int) error {
 	m.stopLocked(disp)
 
 	m.logf("[browser] 启动虚拟显示器 %s (%dx%d)...", disp, w, h)
-	xvfb := exec.Command("Xvfb", disp, "-screen", "0", fmt.Sprintf("%dx%dx24", w, h),
-		"-ac", "+extension", "GLX", "+render", "-noreset")
-	xvfb.Stderr = logWriter{m.logf}
-	if err := xvfb.Start(); err != nil {
-		return fmt.Errorf("启动 Xvfb 失败（请安装 xvfb 后重试）: %w", err)
+	xvfb, err := m.startXvfbLocked(disp, w, h)
+	if err != nil {
+		m.logf("[browser] ❌ Xvfb 启动失败: %v", err)
+		return err
 	}
-	dp := &displayProc{xvfb: xvfb}
-	m.procs[disp] = dp
-
-	// 等待 X socket 就绪（Xvfb 启动后 /tmp/.X11-unix/X<num> 才出现）
-	sock := x11Socket(disp)
-	deadline := time.Now().Add(6 * time.Second)
-	for time.Now().Before(deadline) {
-		if _, err := os.Stat(sock); err == nil {
-			break
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
+	m.procs[disp] = &displayProc{xvfb: xvfb}
 
 	if err := m.startChromeLocked(disp, url, w, h); err != nil {
 		m.stopLocked(disp)
 		return err
 	}
 	return nil
+}
+
+// startXvfbLocked 启动 Xvfb 并等待 X socket 就绪。
+// 启动失败时捕获 stderr 给出真实原因，并清理残留锁/socket 后重试一次。
+func (m *Manager) startXvfbLocked(disp string, w, h int) (*exec.Cmd, error) {
+	if _, err := exec.LookPath("Xvfb"); err != nil {
+		return nil, fmt.Errorf("未找到 Xvfb，请先安装（sudo apt install xvfb）")
+	}
+
+	var lastErr error
+	for attempt := 0; attempt < 2; attempt++ {
+		var buf syncBuffer
+		xvfb := exec.Command("Xvfb", disp, "-screen", "0", fmt.Sprintf("%dx%dx24", w, h),
+			"-ac", "+extension", "GLX", "+render", "-noreset")
+		xvfb.Stdout = &buf
+		xvfb.Stderr = &buf
+		if err := xvfb.Start(); err != nil {
+			return nil, fmt.Errorf("启动 Xvfb 失败: %w", err)
+		}
+		died := make(chan struct{})
+		go func() {
+			_ = xvfb.Wait()
+			close(died)
+		}()
+
+		// 等待 X socket 就绪（Xvfb 启动后 /tmp/.X11-unix/X<num> 才出现）
+		sock := x11Socket(disp)
+		deadline := time.Now().Add(5 * time.Second)
+		ready := false
+		for time.Now().Before(deadline) {
+			if _, err := os.Stat(sock); err == nil {
+				ready = true
+				break
+			}
+			select {
+			case <-died:
+				goto failed // Xvfb 提前退出
+			default:
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
+		if ready {
+			return xvfb, nil
+		}
+
+	failed:
+		lastErr = fmt.Errorf("Xvfb 未就绪（第 %d 次）: %s", attempt+1, strings.TrimSpace(buf.String()))
+		// 清理残留锁 / socket（上次异常退出会导致 Xvfb 拒绝启动）
+		cleanupDisplayFiles(disp)
+		time.Sleep(300 * time.Millisecond)
+	}
+	return nil, lastErr
+}
+
+// cleanupDisplayFiles 删除显示器的残留锁文件与 socket（异常退出后 Xvfb 无法再启动同一编号）
+func cleanupDisplayFiles(disp string) {
+	num := strings.TrimPrefix(disp, ":")
+	_ = os.Remove(filepath.Join(os.TempDir(), ".X"+num+"-lock"))
+	_ = os.Remove(x11Socket(disp))
+}
+
+// syncBuffer 线程安全的 stderr 缓冲（子进程写、主线程读）
+type syncBuffer struct {
+	mu sync.Mutex
+	b  strings.Builder
+}
+
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
 }
 
 // startChromeLocked 探测浏览器并启动（--kiosk 全屏无边框，只显示网页内容）
@@ -186,6 +251,7 @@ func (m *Manager) stopLocked(disp string) {
 		_, _ = p.xvfb.Process.Wait()
 	}
 	delete(m.procs, disp)
+	cleanupDisplayFiles(disp)
 }
 
 // x11Socket 返回显示器的 X socket 路径，如 ":99" -> "/tmp/.X11-unix/X99"
