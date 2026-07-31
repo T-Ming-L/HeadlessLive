@@ -1,9 +1,9 @@
 # HeadlessLive
 
-> 无头直播演播室（Headless OBS）—— 部署在 Linux 服务器上、无界面运行的直播工具，
+> 无头直播演播室（Headless OBS）—— 部署在 Linux / Windows 服务器上、无界面运行的直播工具，
 > 全部通过 **Web 浏览器远程控制**，采用 **源（Source）→ 场景（Scene）→ 输出（Output）**
 > 三层模型，对标 OBS。内置 **B 站直播助手**（扫码登录 → 一键开播 → 自动填入推流密钥），
-> 也支持通用 RTMP / SRT 推流与本地录制。
+> 也支持通用 RTMP / SRT 推流与本地录制。提供 **Linux / Windows 单文件版**。
 
 ## 功能
 
@@ -17,21 +17,22 @@
 - ✅ **VAAPI/QSV 硬件编码**：自动探测 Intel 核显，低 CPU 占用
 - ✅ **WebSocket**：实时日志 + 输出状态推送
 - ✅ **Vue 3 + Vite 前端**：三栏布局（源/画布/属性）+ 拖拽 + 实时预览
-- ✅ **单文件部署**：前端构建产物 embed 进 Go 二进制，一个文件搞定
+- ✅ **单文件部署**：Linux / Windows 单文件二进制，前端已内嵌，无需安装运行时
 - ✅ **B 站直播助手**：扫码登录 → 一键开播获取推流地址/密钥 → 自动填入输出配置（RTMP 推流到 B 站）
 
 ## 环境要求
 
-### 运行环境（Linux 服务器）
+### 运行环境
 
-| 依赖         | 版本/说明                         | 用途                         |
-| ------------ | --------------------------------- | ---------------------------- |
-| Linux        | x86_64（amd64），推荐 Debian/Ubuntu | 部署目标；N100 等小主机即可  |
-| FFmpeg       | 4.x+（含 v4l2 / alsa / vaapi 支持） | 采集、滤镜合成、编码、推流   |
-| v4l-utils    | 任意                              | 采集卡设备探测（`v4l2-ctl`） |
-| alsa-utils   | 任意                              | 声卡设备探测（`arecord`）    |
-| vainfo       | 任意                              | Intel VAAPI 硬编探测         |
-| Xvfb + Chromium | 可选，仅「浏览器源」需要       | 浏览器源渲染与捕获           |
+**Linux（推荐，功能完整）**
+
+| 依赖            | 用途                                        |
+| --------------- | ------------------------------------------- |
+| FFmpeg 4.x+     | 核心引擎：采集、滤镜合成、编码、推流        |
+| v4l-utils       | 采集卡设备探测（`v4l2-ctl`）                |
+| alsa-utils      | 声卡设备探测（`arecord`）                   |
+| vainfo          | Intel VAAPI 硬编探测                        |
+| Xvfb + Chromium | 可选，仅「浏览器源」需要                    |
 
 ```bash
 sudo apt install ffmpeg v4l-utils vainfo alsa-utils
@@ -39,7 +40,18 @@ sudo apt install ffmpeg v4l-utils vainfo alsa-utils
 sudo apt install xvfb chromium
 ```
 
-> 硬件：推荐 Intel 核显（VAAPI 硬编，低 CPU 占用）；采集用 USB 采集卡（UVC）+ USB 声卡（如 Synido Voice 100）。
+**Windows（单文件版）**
+
+| 依赖   | 说明                                                              |
+| ------ | ----------------------------------------------------------------- |
+| FFmpeg | 需自行安装并加入 PATH（如 [gyan.dev 构建](https://www.gyan.dev/ffmpeg/builds/)），程序启动时调用 `ffmpeg` |
+
+- ✅ 单文件 `HeadlessLive-windows-amd64.exe`，无需 Go / Node 或其它运行时
+- ⚠️ 硬件采集（USB 采集卡 / USB 声卡）与 VAAPI 硬编为 **Linux 专属**，Windows 不可用
+- ✅ Windows 可用源：图片 / 文字 / 纯色 / 媒体文件 / RTMP 拉流；编码用软件 `libx264`
+- ✅ 推流（RTMP / SRT）与本地录制在 Windows 完全可用
+
+> 硬件建议（Linux）：Intel 核显（VAAPI 硬编，低 CPU 占用）+ USB 采集卡（UVC）+ USB 声卡（如 Synido Voice 100）。
 
 ### 编译环境（可选 —— 直接下载 Release 二进制则不需要）
 
@@ -47,8 +59,6 @@ sudo apt install xvfb chromium
 | ------- | --------- | ------------------ |
 | Go      | 1.22+     | 后端编译           |
 | Node.js | 18+       | 仅构建前端（`web/`）|
-
-> Windows 仅用于本地编译与体验；正式部署目标为 Linux 服务器。
 
 ## 依赖与引用
 
@@ -122,25 +132,36 @@ DISPLAY=:99 chromium --no-sandbox --disable-gpu --hide-scrollbars \
 
 ## 快速开始
 
-### 1. 安装依赖（Linux 服务器）
+> 📥 从 [最新 Release](https://github.com/T-Ming-L/HeadlessLive/releases/latest) 下载对应平台的单文件二进制，**无需自行编译**。
+
+### Linux
 
 ```bash
-sudo apt install ffmpeg v4l-utils vainfo alsa-utils
-# 浏览器源需要：
-sudo apt install xvfb chromium
+# 1. 安装系统依赖
+sudo apt install ffmpeg v4l-utils vainfo alsa-utils   # 浏览器源另需：xvfb chromium
+
+# 2. 下载 Linux 单文件版（最新 Release）
+wget https://github.com/T-Ming-L/HeadlessLive/releases/latest/download/HeadlessLive-linux-amd64
+chmod +x HeadlessLive-linux-amd64
+
+# 3. 启动（默认端口 8080）
+./HeadlessLive-linux-amd64
 ```
 
-### 2. 部署
+### Windows
 
-```bash
-scp HeadlessLive root@your-server:/opt/headlesslive/
-ssh root@your-server
-cd /opt/headlesslive
-chmod +x HeadlessLive
-./HeadlessLive
+```powershell
+# 1. 安装 FFmpeg 并加入 PATH（https://www.gyan.dev/ffmpeg/builds/）
+
+# 2. 下载 Windows 单文件版（最新 Release）：
+#    https://github.com/T-Ming-L/HeadlessLive/releases/latest/download/HeadlessLive-windows-amd64.exe
+
+# 3. 启动（默认端口 8080）
+.\HeadlessLive-windows-amd64.exe
 ```
 
 首次运行自动生成 `config.yaml`（服务器配置）和 `scenes.yaml`（默认示例场景）。
+浏览器访问 `http://服务器IP:8080` 打开控制台。
 
 ### 服务器配置（config.yaml）
 
@@ -175,21 +196,18 @@ server:
 - 设备列表通过 `GET /api/devices/audio` 获取（`arecord -L` 解析，USB 设备优先并标记）
 - 查看声卡设备名：`arecord -L`
 
-### 3. 打开控制台
-
-浏览器访问 `http://服务器IP:8080`。左侧源列表、中间场景画布（MJPEG 预览）、右侧属性面板、底部推流控制。
-
 ## 编译
 
 需要 **Go 1.22+** 和 **Node.js 18+**（前端构建）。
 
 ```bash
 # 一键构建（Windows 用 BUILD.bat）：
-./build.sh          # 自动：npm build → go build → HeadlessLive
+./build.sh          # 自动：npm build → go build → Linux 单文件
 
 # 或手动：
 cd web && npm install && npm run build && cd ..   # 前端 → static/
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o HeadlessLive .
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o HeadlessLive-linux-amd64 .      # Linux
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o HeadlessLive-windows-amd64.exe . # Windows
 ```
 
 ## API
