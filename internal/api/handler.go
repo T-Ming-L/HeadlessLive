@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/T-Ming-L/HeadlessLive/internal/bilibili"
+	"github.com/T-Ming-L/HeadlessLive/internal/browser"
 	"github.com/T-Ming-L/HeadlessLive/internal/capture"
 	"github.com/T-Ming-L/HeadlessLive/internal/ffmpeg"
 	"github.com/T-Ming-L/HeadlessLive/internal/model"
@@ -25,11 +26,12 @@ type Handler struct {
 	hub       *websocket.Hub
 	uploadDir string
 	bili      *bilibili.Client
+	browser   *browser.Manager
 }
 
 // NewHandler 创建处理器
 func NewHandler(st *store.Store, manager *ffmpeg.Manager, preview *ffmpeg.Preview,
-	hub *websocket.Hub, uploadDir string, bili *bilibili.Client) *Handler {
+	hub *websocket.Hub, uploadDir string, bili *bilibili.Client, browser *browser.Manager) *Handler {
 	os.MkdirAll(uploadDir, 0755)
 	return &Handler{
 		store:     st,
@@ -38,6 +40,26 @@ func NewHandler(st *store.Store, manager *ffmpeg.Manager, preview *ffmpeg.Previe
 		hub:       hub,
 		uploadDir: uploadDir,
 		bili:      bili,
+		browser:   browser,
+	}
+}
+
+// ensureBrowsers 渲染规格含浏览器源时，自动启动 Xvfb + Chromium（无需手动拉起）
+func (h *Handler) ensureBrowsers(rs *scene.RenderSpec) {
+	if h.browser == nil || rs == nil {
+		return
+	}
+	for _, in := range rs.Inputs {
+		if in.Kind != scene.InputX11 || in.Source == nil || in.Source.Type != model.SourceBrowser {
+			continue
+		}
+		disp := in.Source.Display
+		if disp == "" {
+			disp = ":99"
+		}
+		if err := h.browser.Ensure(disp, in.Source.URL, in.Source.BrowserW, in.Source.BrowserH); err != nil {
+			h.hub.BroadcastLog("[browser] " + err.Error())
+		}
 	}
 }
 

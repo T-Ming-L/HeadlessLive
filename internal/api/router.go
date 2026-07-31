@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/T-Ming-L/HeadlessLive/internal/bilibili"
+	"github.com/T-Ming-L/HeadlessLive/internal/browser"
 	"github.com/T-Ming-L/HeadlessLive/internal/ffmpeg"
 	"github.com/T-Ming-L/HeadlessLive/internal/logging"
 	"github.com/T-Ming-L/HeadlessLive/internal/store"
@@ -14,10 +15,24 @@ import (
 
 // SetupRouter 配置全部路由
 func SetupRouter(st *store.Store, manager *ffmpeg.Manager, preview *ffmpeg.Preview,
-	hub *websocket.Hub, uploadDir string, logFile *logging.FileLog, bili *bilibili.Client) *gin.Engine {
+	hub *websocket.Hub, uploadDir string, logFile *logging.FileLog, bili *bilibili.Client,
+	browser *browser.Manager) *gin.Engine {
 	r := gin.Default()
 
-	handler := NewHandler(st, manager, preview, hub, uploadDir, bili)
+	handler := NewHandler(st, manager, preview, hub, uploadDir, bili, browser)
+
+	// 浏览器管理器日志 → WebSocket + 日志文件
+	if browser != nil {
+		browser.SetLogger(func(format string, args ...interface{}) {
+			emitLog := func(line string) {
+				hub.BroadcastLog(line)
+				if logFile != nil {
+					logFile.WriteLine(line)
+				}
+			}
+			emitLog(fmt.Sprintf(format, args...))
+		})
+	}
 
 	// 日志广播到 WebSocket + 写入日志文件
 	emitLog := func(line string) {

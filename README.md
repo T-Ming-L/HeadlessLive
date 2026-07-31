@@ -32,13 +32,11 @@
 | v4l-utils       | 采集卡设备探测（`v4l2-ctl`）         |
 | alsa-utils      | 声卡设备探测（`arecord`）            |
 | vainfo          | Intel VAAPI 硬编探测                 |
-| Xvfb + Chromium | 可选，仅「浏览器源」需要             |
+| Xvfb + Chrome | 可选，仅「浏览器源」需要             |
 
 ```bash
 sudo apt install ffmpeg v4l-utils vainfo alsa-utils
-# 浏览器源（可选）：Debian/Ubuntu 默认源已移除 chromium，改用 snap 安装
-sudo apt install xvfb
-sudo snap install chromium
+# 浏览器源（可选）：sudo apt install xvfb，浏览器安装见「浏览器源」章节（勿用 snap 版 chromium）
 ```
 
 **Windows（单文件版）**
@@ -123,24 +121,24 @@ npm run dev
 
 ### 浏览器源（browser）
 
-Linux 下用虚拟 X 显示器 + Chromium 渲染，FFmpeg x11grab 捕获。
+场景中加入浏览器源后，**启动预览或推流时会自动拉起 Xvfb 虚拟显示器 + 浏览器**，
+无需手动启动；退出程序时自动清理。
 
-> **安装 Chromium**：Debian / Ubuntu 默认源已移除 `chromium` 包，`apt install chromium`
-> 会报 `Package 'chromium' has no installation candidate`。请改用 snap：
+> **安装浏览器（必须，二选一）**
 >
-> ```bash
-> sudo apt install xvfb
-> sudo snap install chromium
-> ```
+> - 推荐 **Google Chrome**（与 Xvfb 兼容最好）：
+>   ```bash
+>   sudo apt install xvfb
+>   wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
+>   echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+>   sudo apt update && sudo apt install google-chrome-stable
+>   ```
+> - 或 deb 版 `chromium`（新 Debian/Ubuntu 默认源已移除该包，需从其它渠道安装）
 >
-> 服务器不支持 snap 时，可改用 Google Chrome（[官方 deb 仓库](https://www.google.com/chrome/)），
-> 并把下面命令的 `chromium` 换成 `/usr/bin/google-chrome-stable`。
+> ⚠️ **不要用 snap 版 Chromium**：沙箱限制无法连接 Xvfb 虚拟显示器，画面不会显示。
 
-```bash
-Xvfb :99 -screen 0 1280x720x24
-DISPLAY=:99 chromium --no-sandbox --disable-gpu --hide-scrollbars \
-    --window-size=1280x720 --autoplay-policy=no-user-gesture-required <URL>
-```
+浏览器源在 Web UI 中配置：**URL**（要打开的网页）、**渲染宽/高**（默认 1280×720）、
+**帧率**（默认 30）；虚拟显示器默认 `:99`，也可在源属性中指定。
 
 ## 快速开始
 
@@ -149,7 +147,7 @@ DISPLAY=:99 chromium --no-sandbox --disable-gpu --hide-scrollbars \
 ### Linux
 
 ```bash
-# 1. 安装系统依赖（浏览器源另需：apt install xvfb && snap install chromium）
+# 1. 安装系统依赖（浏览器源另需 xvfb + Chrome，见「浏览器源」章节）
 sudo apt install ffmpeg v4l-utils vainfo alsa-utils
 
 # 2. 下载 Linux 单文件版（最新 Release）

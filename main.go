@@ -15,6 +15,7 @@ import (
 
 	"github.com/T-Ming-L/HeadlessLive/internal/api"
 	"github.com/T-Ming-L/HeadlessLive/internal/bilibili"
+	"github.com/T-Ming-L/HeadlessLive/internal/browser"
 	"github.com/T-Ming-L/HeadlessLive/internal/config"
 	"github.com/T-Ming-L/HeadlessLive/internal/ffmpeg"
 	"github.com/T-Ming-L/HeadlessLive/internal/logging"
@@ -69,8 +70,11 @@ func main() {
 	// B 站直播助手（扫码登录 + 开播取推流密钥，会话持久化到本地文件）
 	bili := bilibili.NewClient("bilibili_session.json")
 
+	// 浏览器源管理器（自动启动 Xvfb + Chromium）
+	bm := browser.NewManager()
+
 	// 路由
-	router := api.SetupRouter(st, manager, preview, hub, "uploads", logFile, bili)
+	router := api.SetupRouter(st, manager, preview, hub, "uploads", logFile, bili, bm)
 
 	// 嵌入的静态文件（Vite 构建产物：static/index.html + static/assets/*）
 	// 放在 NoRoute，仅兜底非 API 路径
@@ -86,6 +90,7 @@ func main() {
 		go func() {
 			manager.StopAll()
 			preview.Stop()
+			bm.StopAll()
 			close(done)
 		}()
 		select {

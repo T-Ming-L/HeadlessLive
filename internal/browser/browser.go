@@ -1,0 +1,164 @@
+// Package browser 自动管理浏览器源所需环境：Xvfb 虚拟显示器 + Chromium/Chrome 进程。
+//
+// 浏览器源通过 x11grab 抓取虚拟显示器，本包在首次使用浏览器源时自动拉起
+// Xvfb 与浏览器（按显示器分别管理），退出时统一清理，无需用户手动启动。
+// 注意：snap 版 Chromium 因沙箱限制无法连接 Xvfb，请使用 deb 版 chromium / google-chrome。
+package browser
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+)
+
+// 浏览器可执行文件候选（按顺序探测）
+var browserCandidates = []string{
+	"chromium",
+	"chromium-browser",
+	"google-chrome-stable",
+	"google-chrome",
+	"chrome",
+}
+
+// displayProc 一个虚拟显示器上的进程组
+type displayProc struct {
+	xvfb   *exec.Cmd
+	chrome *exec.Cmd
+}
+
+// Manager 浏览器环境管理器（按 DISPLAY 区分，支持多个虚拟显示器）
+type Manager struct {
+	mu    sync.Mutex
+	procs map[string]*displayProc
+	logf  func(string, ...interface{})
+}
+
+// NewManager 创建浏览器管理器
+func NewManager() *Manager {
+	return &Manager{procs: map[string]*displayProc{}, logf: func(string, ...interface{}) {}}
+}
+
+// SetLogger 设置日志回调（转发到 WebSocket / 日志文件）
+func (m *Manager) SetLogger(f func(format string, args ...interface{})) {
+	if f != nil {
+		m.logf = f
+	}
+}
+
+// Ensure 确保指定显示器上的 Xvfb + 浏览器已启动（同一显示器只启动一次）
+func (m *Manager) Ensure(disp, url string, w, h int) error {
+	if disp == "" {
+		disp = ":99"
+	}
+	if w <= 0 {
+		w = 1280
+	}
+	if h <= 0 {
+		h = 720
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if p, ok := m.procs[disp]; ok && p.xvfb != nil && p.chrome != nil {
+		return nil // 已启动
+	}
+	m.stopLocked(disp)
+
+	m.logf("[browser] 启动虚拟显示器 %s (%dx%d)...", disp, w, h)
+	xvfb := exec.Command("Xvfb", disp, "-screen", "0", fmt.Sprintf("%dx%dx24", w, h),
+		"-ac", "+extension", "GLX", "+render", "-noreset")
+	xvfb.Stderr = logWriter{m.logf}
+	if err := xvfb.Start(); err != nil {
+		return fmt.Errorf("启动 Xvfb 失败（请安装 xvfb 后重试）: %w", err)
+	}
+	dp := &displayProc{xvfb: xvfb}
+	m.procs[disp] = dp
+
+	// 等待 X socket 就绪（Xvfb 启动后 /tmp/.X11-unix/X<num> 才出现）
+	sock := x11Socket(disp)
+	deadline := time.Now().Add(6 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(sock); err == nil {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	// 探测浏览器可执行文件
+	bin := ""
+	for _, c := range browserCandidates {
+		if p, err := exec.LookPath(c); err == nil {
+			bin = p
+			break
+		}
+	}
+	if bin == "" {
+		m.stopLocked(disp)
+		return fmt.Errorf("未找到 Chromium/Chrome，请安装（推荐 deb 版 chromium 或 google-chrome；snap 版无法连接 Xvfb）")
+	}
+
+	m.logf("[browser] 打开 %s (%dx%d) -> %s", bin, w, h, url)
+	chrome := exec.Command(bin,
+		"--no-sandbox", "--disable-gpu", "--hide-scrollbars",
+		"--window-size="+fmt.Sprintf("%dx%d", w, h),
+		"--autoplay-policy=no-user-gesture-required",
+		url)
+	chrome.Env = append(os.Environ(), "DISPLAY="+disp)
+	chrome.Stderr = logWriter{m.logf}
+	if err := chrome.Start(); err != nil {
+		m.stopLocked(disp)
+		return fmt.Errorf("启动浏览器失败: %w", err)
+	}
+	dp.chrome = chrome
+	return nil
+}
+
+// StopAll 停止所有虚拟显示器与浏览器
+func (m *Manager) StopAll() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for disp := range m.procs {
+		m.stopLocked(disp)
+	}
+}
+
+func (m *Manager) stopLocked(disp string) {
+	p, ok := m.procs[disp]
+	if !ok {
+		return
+	}
+	if p.chrome != nil {
+		_ = p.chrome.Process.Kill()
+		_, _ = p.chrome.Process.Wait()
+	}
+	if p.xvfb != nil {
+		_ = p.xvfb.Process.Kill()
+		_, _ = p.xvfb.Process.Wait()
+	}
+	delete(m.procs, disp)
+}
+
+// x11Socket 返回显示器的 X socket 路径，如 ":99" -> "/tmp/.X11-unix/X99"
+func x11Socket(disp string) string {
+	num := strings.TrimPrefix(disp, ":")
+	return filepath.Join(os.TempDir(), ".X11-unix", "X"+num)
+}
+
+// logWriter 把子进程 stderr 逐行转发到日志
+type logWriter struct {
+	f func(string, ...interface{})
+}
+
+func (w logWriter) Write(p []byte) (int, error) {
+	for _, line := range strings.Split(string(p), "\n") {
+		if t := strings.TrimSpace(line); t != "" {
+			w.f("[browser] %s", t)
+		}
+	}
+	return len(p), nil
+}
