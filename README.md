@@ -86,7 +86,7 @@ sudo snap install chromium
 
 ### 参考项目
 
-- [GamerNoTitle/BiliLive-Utility](https://github.com/GamerNoTitle/BiliLive-Utility)（AGPL-3.0）—— 本项目的 `internal/bilibili` 按其公开的 **B 站直播接口协议**（扫码登录 / 开播 / 取推流密钥）独立编写的 Go 实现，未引用其源代码。
+- [GamerNoTitle/BiliLive-Utility](https://github.com/GamerNoTitle/BiliLive-Utility)（AGPL-3.0）—— 本项目的`internal/bilibili`按其公开的 **B 站直播接口协议**（扫码登录 / 开播 / 取推流密钥）独立编写的 Go 实现，未引用其源代码。
 
 ## 架构
 
