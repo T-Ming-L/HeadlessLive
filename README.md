@@ -36,8 +36,9 @@
 
 ```bash
 sudo apt install ffmpeg v4l-utils vainfo alsa-utils
-# 浏览器源（可选）：
-sudo apt install xvfb chromium
+# 浏览器源（可选）：Debian/Ubuntu 默认源已移除 chromium，改用 snap 安装
+sudo apt install xvfb
+sudo snap install chromium
 ```
 
 **Windows（单文件版）**
@@ -122,7 +123,18 @@ npm run dev
 
 ### 浏览器源（browser）
 
-Linux 下用虚拟 X 显示器 + Chromium 渲染，FFmpeg `x11grab` 捕获：
+Linux 下用虚拟 X 显示器 + Chromium 渲染，FFmpeg `x11grab` 捕获。
+
+> **安装 Chromium**：Debian / Ubuntu 默认源已移除 `chromium` 包，`apt install chromium`
+> 会报 `Package 'chromium' has no installation candidate`。请改用 snap：
+>
+> ```bash
+> sudo apt install xvfb
+> sudo snap install chromium
+> ```
+>
+> 服务器不支持 snap 时，可改用 Google Chrome（[官方 deb 仓库](https://www.google.com/chrome/)），
+> 并把下面命令的 `chromium` 换成 `/usr/bin/google-chrome-stable`。
 
 ```bash
 Xvfb :99 -screen 0 1280x720x24
@@ -137,8 +149,8 @@ DISPLAY=:99 chromium --no-sandbox --disable-gpu --hide-scrollbars \
 ### Linux
 
 ```bash
-# 1. 安装系统依赖
-sudo apt install ffmpeg v4l-utils vainfo alsa-utils   # 浏览器源另需：xvfb chromium
+# 1. 安装系统依赖（浏览器源另需：apt install xvfb && snap install chromium）
+sudo apt install ffmpeg v4l-utils vainfo alsa-utils
 
 # 2. 下载 Linux 单文件版（最新 Release）
 wget https://github.com/T-Ming-L/HeadlessLive/releases/latest/download/HeadlessLive-linux-amd64
