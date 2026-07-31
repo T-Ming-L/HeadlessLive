@@ -87,7 +87,7 @@ func TestBuildText(t *testing.T) {
 	if !strings.Contains(joined, "color=c=black@0.0") {
 		t.Errorf("文字输入应含透明画布: %s", joined)
 	}
-	if !strings.Contains(joined, "drawtext=textfile=") {
+	if !strings.Contains(joined, "drawtext=font=Sans:textfile=") {
 		t.Errorf("文字输入应含 drawtext: %s", joined)
 	}
 	if !strings.Contains(joined, "fontsize=64") || !strings.Contains(joined, "fontcolor=#ffffff") {

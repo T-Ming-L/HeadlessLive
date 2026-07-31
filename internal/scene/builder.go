@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -258,6 +259,10 @@ func buildVideoInput(src *model.Source) (*Input, error) {
 		if src.Text == "" {
 			return nil, fmt.Errorf("%w: 文字源缺少内容", ErrDeviceUnavailable)
 		}
+		// drawtext 需要系统字体；缺失时给出明确提示而不是 ffmpeg 报错
+		if !fontAvailable() {
+			return nil, fmt.Errorf("%w: 未检测到可用字体，请先安装（中文建议 fonts-noto-cjk）", ErrDeviceUnavailable)
+		}
 		// 用 lavfi 生成透明画布 + drawtext 文字层
 		// （textfile 传内容避免转义，画布 1280x720，场景内等比缩放铺满场景项）
 		tf, err := writeDrawTextFile(src.Text)
@@ -274,7 +279,7 @@ func buildVideoInput(src *model.Source) (*Input, error) {
 		}
 		in.Kind = InputText
 		in.params = []string{"-f", "lavfi", "-i", fmt.Sprintf(
-			"color=c=black@0.0:s=%dx%d:r=30,drawtext=textfile='%s':fontsize=%d:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2",
+			"color=c=black@0.0:s=%dx%d:r=30,drawtext=font=Sans:textfile='%s':fontsize=%d:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2",
 			textCanvasW, textCanvasH, tf, fs, fc)}
 		in.path = ""
 
@@ -517,6 +522,25 @@ func writeDrawTextFile(content string) (string, error) {
 		return "", err
 	}
 	return f.Name(), nil
+}
+
+// fontAvailable 检测系统是否有可用字体（drawtext 渲染前提）
+func fontAvailable() bool {
+	// 优先用 fontconfig
+	if out, err := exec.Command("fc-list", ":", "family").Output(); err == nil {
+		return len(strings.TrimSpace(string(out))) > 0
+	}
+	// fc-list 不存在时，检查常见字体目录
+	for _, dir := range []string{
+		"/usr/share/fonts", "/usr/local/share/fonts",
+		"/System/Library/Fonts",
+		`C:\Windows\Fonts`, `C:\WINNT\Fonts`,
+	} {
+		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
+			return true
+		}
+	}
+	return false
 }
 
 // buildSourceFilters 构建单个源 + 场景项的滤镜链（crop → scale → 透明度）

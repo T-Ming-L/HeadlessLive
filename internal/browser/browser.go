@@ -25,9 +25,12 @@ var browserCandidates = []string{
 }
 
 // displayProc 一个虚拟显示器上的进程组
+// （记录当前打开的 URL/尺寸，变化时自动重启浏览器以支持切换网站）
 type displayProc struct {
 	xvfb   *exec.Cmd
 	chrome *exec.Cmd
+	url    string
+	w, h   int
 }
 
 // Manager 浏览器环境管理器（按 DISPLAY 区分，支持多个虚拟显示器）
@@ -49,7 +52,8 @@ func (m *Manager) SetLogger(f func(format string, args ...interface{})) {
 	}
 }
 
-// Ensure 确保指定显示器上的 Xvfb + 浏览器已启动（同一显示器只启动一次）
+// Ensure 确保指定显示器上的 Xvfb + 浏览器已启动。
+// 若浏览器已打开但 URL 或尺寸与目标不一致，会自动重启浏览器（Xvfb 保留）。
 func (m *Manager) Ensure(disp, url string, w, h int) error {
 	if disp == "" {
 		disp = ":99"
@@ -64,9 +68,20 @@ func (m *Manager) Ensure(disp, url string, w, h int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// 已在运行：目标一致则复用，URL/尺寸变化则重启浏览器
 	if p, ok := m.procs[disp]; ok && p.xvfb != nil && p.chrome != nil {
-		return nil // 已启动
+		if p.url == url && p.w == w && p.h == h {
+			return nil
+		}
+		m.logf("[browser] 目标变化（%s %dx%d），重启浏览器...", url, w, h)
+		m.killChromeLocked(disp)
+		if err := m.startChromeLocked(disp, url, w, h); err != nil {
+			m.stopLocked(disp)
+			return err
+		}
+		return nil
 	}
+
 	m.stopLocked(disp)
 
 	m.logf("[browser] 启动虚拟显示器 %s (%dx%d)...", disp, w, h)
@@ -89,6 +104,15 @@ func (m *Manager) Ensure(disp, url string, w, h int) error {
 		time.Sleep(200 * time.Millisecond)
 	}
 
+	if err := m.startChromeLocked(disp, url, w, h); err != nil {
+		m.stopLocked(disp)
+		return err
+	}
+	return nil
+}
+
+// startChromeLocked 探测浏览器并启动（--kiosk 全屏无边框，只显示网页内容）
+func (m *Manager) startChromeLocked(disp, url string, w, h int) error {
 	// 探测浏览器可执行文件
 	bin := ""
 	for _, c := range browserCandidates {
@@ -98,24 +122,40 @@ func (m *Manager) Ensure(disp, url string, w, h int) error {
 		}
 	}
 	if bin == "" {
-		m.stopLocked(disp)
 		return fmt.Errorf("未找到 Chromium/Chrome，请安装（推荐 deb 版 chromium 或 google-chrome；snap 版无法连接 Xvfb）")
 	}
 
 	m.logf("[browser] 打开 %s (%dx%d) -> %s", bin, w, h, url)
 	chrome := exec.Command(bin,
 		"--no-sandbox", "--disable-gpu", "--hide-scrollbars",
+		"--kiosk", // 全屏无边框，x11grab 只捕获网页内容
+		"--window-position=0,0",
 		"--window-size="+fmt.Sprintf("%dx%d", w, h),
 		"--autoplay-policy=no-user-gesture-required",
+		"--no-first-run", "--no-default-browser-check",
+		"--disable-session-crashed-bubble", "--disable-infobars",
+		"--disable-notifications",
 		url)
 	chrome.Env = append(os.Environ(), "DISPLAY="+disp)
 	chrome.Stderr = logWriter{m.logf}
 	if err := chrome.Start(); err != nil {
-		m.stopLocked(disp)
 		return fmt.Errorf("启动浏览器失败: %w", err)
 	}
-	dp.chrome = chrome
+	p := m.procs[disp]
+	p.chrome = chrome
+	p.url = url
+	p.w, p.h = w, h
 	return nil
+}
+
+func (m *Manager) killChromeLocked(disp string) {
+	p, ok := m.procs[disp]
+	if !ok || p.chrome == nil {
+		return
+	}
+	_ = p.chrome.Process.Kill()
+	_, _ = p.chrome.Process.Wait()
+	p.chrome = nil
 }
 
 // StopAll 停止所有虚拟显示器与浏览器

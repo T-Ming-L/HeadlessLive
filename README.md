@@ -29,8 +29,8 @@
 | 依赖          | 用途                                 |
 | ------------- | ------------------------------------ |
 | FFmpeg 4.x+   | 核心引擎：采集、滤镜合成、编码、推流 |
-| v4l-utils     | 采集卡设备探测（`v4l2-ctl`）         |
-| alsa-utils    | 声卡设备探测（`arecord`）            |
+| v4l-utils     | 采集卡设备探测（`v4l2-ctl`）       |
+| alsa-utils    | 声卡设备探测（`arecord`）          |
 | vainfo        | Intel VAAPI 硬编探测                 |
 | Xvfb + Chrome | 可选，仅「浏览器源」需要             |
 
@@ -44,7 +44,7 @@ sudo apt install ffmpeg v4l-utils vainfo alsa-utils
 
 | 依赖   | 说明                                                                                                      |
 | ------ | --------------------------------------------------------------------------------------------------------- |
-| FFmpeg | 需自行安装并加入 PATH（如 [gyan.dev 构建](https://www.gyan.dev/ffmpeg/builds/)），程序启动时调用 `ffmpeg` |
+| FFmpeg | 需自行安装并加入 PATH（如[gyan.dev 构建](https://www.gyan.dev/ffmpeg/builds/)），程序启动时调用 `ffmpeg` |
 
 - ✅ 单文件 `HeadlessLive-windows-amd64.exe`，无需 Go / Node 或其它运行时
 - ⚠️ 硬件采集（USB 采集卡 / USB 声卡）与 VAAPI 硬编为 **Linux 专属**，Windows 不可用
@@ -55,19 +55,19 @@ sudo apt install ffmpeg v4l-utils vainfo alsa-utils
 
 ### 编译环境（可选 —— 直接下载 Release 二进制则不需要）
 
-| 依赖    | 版本  | 用途                 |
-| ------- | ----- | -------------------- |
-| Go      | 1.22+ | 后端编译             |
+| 依赖    | 版本  | 用途                   |
+| ------- | ----- | ---------------------- |
+| Go      | 1.22+ | 后端编译               |
 | Node.js | 18+   | 仅构建前端（`web/`） |
 
 ## 依赖与引用
 
 ### Go 后端（`go.mod`）
 
-| 库                             | 版本   | 用途                     |
-| ------------------------------ | ------ | ------------------------ |
-| `github.com/gin-gonic/gin`     | v1.8.1 | HTTP 路由 / REST API     |
-| `github.com/gorilla/websocket` | v1.5.1 | WebSocket 日志与状态推送 |
+| 库                               | 版本   | 用途                       |
+| -------------------------------- | ------ | -------------------------- |
+| `github.com/gin-gonic/gin`     | v1.8.1 | HTTP 路由 / REST API       |
+| `github.com/gorilla/websocket` | v1.5.1 | WebSocket 日志与状态推送   |
 | `gopkg.in/yaml.v3`             | v3.0.1 | `scenes.yaml` 配置持久化 |
 
 ### 前端（`web/`）
@@ -140,6 +140,11 @@ npm run dev
 
 浏览器源在 Web UI 中配置：**URL**（要打开的网页）、**渲染宽/高**（默认 1280×720）、
 **帧率**（默认 30）；虚拟显示器默认 `:99`，也可在源属性中指定。
+
+- 浏览器以 **kiosk 全屏模式**启动，无窗口边框/工具栏，x11grab 只捕获网页内容
+- **切换网站**：修改源属性里的 URL，重新启动预览/推流即会自动重载浏览器
+- **心率/数据插件**（如 hypertate）：把插件提供的网页 URL 填进浏览器源即可，
+  例如 hypertate 的 OBS 浏览器源地址可直接使用
 
 ## 快速开始
 
@@ -223,24 +228,24 @@ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o HeadlessLiv
 
 ## API
 
-| 方法                | 路径                                      | 说明                            |
-| ------------------- | ----------------------------------------- | ------------------------------- |
-| GET/POST/PUT/DELETE | `/api/sources`                            | 源 CRUD（`/api/sources/:id`）   |
-| POST                | `/api/sources/:id/probe`                  | 探测源属性                      |
-| GET/POST/PUT/DELETE | `/api/scenes`                             | 场景 CRUD（`/api/scenes/:id`）  |
-| POST                | `/api/scenes/:id/activate`                | 切换当前场景                    |
-| GET/POST/PUT/DELETE | `/api/outputs`                            | 输出 CRUD（`/api/outputs/:id`） |
-| POST                | `/api/outputs/:id/start`                  | 启动输出（推流/录制）           |
-| POST                | `/api/outputs/:id/stop`                   | 停止输出                        |
-| GET                 | `/api/status`                             | 全量状态                        |
-| POST                | `/api/preview/start` · `/stop`            | 预览控制                        |
-| GET                 | `/preview`                                | MJPEG 预览流                    |
-| POST                | `/api/upload/image` · `/media`            | 上传素材                        |
-| GET                 | `/api/devices/video` · `/audio`           | 扫描设备                        |
-| GET/PUT             | `/api/devices/:dev/controls` · `/control` | 设备控制项                      |
-| GET                 | `/api/bili/qrcode` · `/poll` · `/status`  | B 站扫码登录                    |
-| GET/POST            | `/api/bili/areas` · `/start` · `/stop`    | B 站开播/停播/取推流密钥        |
-| WS                  | `/ws`                                     | WebSocket（日志+状态）          |
+| 方法                | 路径                                             | 说明                              |
+| ------------------- | ------------------------------------------------ | --------------------------------- |
+| GET/POST/PUT/DELETE | `/api/sources`                                 | 源 CRUD（`/api/sources/:id`）   |
+| POST                | `/api/sources/:id/probe`                       | 探测源属性                        |
+| GET/POST/PUT/DELETE | `/api/scenes`                                  | 场景 CRUD（`/api/scenes/:id`）  |
+| POST                | `/api/scenes/:id/activate`                     | 切换当前场景                      |
+| GET/POST/PUT/DELETE | `/api/outputs`                                 | 输出 CRUD（`/api/outputs/:id`） |
+| POST                | `/api/outputs/:id/start`                       | 启动输出（推流/录制）             |
+| POST                | `/api/outputs/:id/stop`                        | 停止输出                          |
+| GET                 | `/api/status`                                  | 全量状态                          |
+| POST                | `/api/preview/start` · `/stop`              | 预览控制                          |
+| GET                 | `/preview`                                     | MJPEG 预览流                      |
+| POST                | `/api/upload/image` · `/media`              | 上传素材                          |
+| GET                 | `/api/devices/video` · `/audio`             | 扫描设备                          |
+| GET/PUT             | `/api/devices/:dev/controls` · `/control`   | 设备控制项                        |
+| GET                 | `/api/bili/qrcode` · `/poll` · `/status` | B 站扫码登录                      |
+| GET/POST            | `/api/bili/areas` · `/start` · `/stop`   | B 站开播/停播/取推流密钥          |
+| WS                  | `/ws`                                          | WebSocket（日志+状态）            |
 
 ## 项目结构
 
