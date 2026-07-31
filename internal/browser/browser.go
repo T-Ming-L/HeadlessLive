@@ -16,8 +16,8 @@ import (
 )
 
 // 浏览器可执行文件候选（按顺序探测）。
-// 注意：snap 版 chromium（/snap/bin/chromium）受 AppArmor 限制无法连接 Xvfb，必须跳过，
-// 因此优先使用 Google Chrome（deb 版）。
+// Google Chrome（deb 版）最稳定；snap 版 chromium 实际也能连接 Xvfb 渲染，
+// 仅在缺少 Chrome 时作为后备（会提示可能存在的兼容问题）。
 var browserCandidates = []string{
 	"google-chrome-stable",
 	"google-chrome",
@@ -115,20 +115,19 @@ func (m *Manager) Ensure(disp, url string, w, h int) error {
 
 // startChromeLocked 探测浏览器并启动（--kiosk 全屏无边框，只显示网页内容）
 func (m *Manager) startChromeLocked(disp, url string, w, h int) error {
-	// 探测浏览器可执行文件（跳过 snap 版：AppArmor 沙箱无法连接 Xvfb）
+	// 探测浏览器可执行文件（Google Chrome 优先；snap 版可用但提示兼容问题）
 	bin := ""
 	for _, c := range browserCandidates {
 		if p, err := exec.LookPath(c); err == nil {
-			if strings.HasPrefix(p, "/snap/") {
-				m.logf("[browser] 跳过 snap 版 %s（AppArmor 限制无法连接 Xvfb）", p)
-				continue
-			}
 			bin = p
+			if strings.HasPrefix(p, "/snap/") {
+				m.logf("[browser] 使用 snap 版 %s（可运行，若异常建议安装 Google Chrome deb 版）", p)
+			}
 			break
 		}
 	}
 	if bin == "" {
-		return fmt.Errorf("未找到可用的 Chrome/Chromium（snap 版不可用）。请安装 Google Chrome deb 版后重试")
+		return fmt.Errorf("未找到 Chrome/Chromium，请安装（推荐 Google Chrome deb 版）后重试")
 	}
 
 	m.logf("[browser] 打开 %s (%dx%d) -> %s", bin, w, h, url)
@@ -195,14 +194,33 @@ func x11Socket(disp string) string {
 	return filepath.Join(os.TempDir(), ".X11-unix", "X"+num)
 }
 
-// logWriter 把子进程 stderr 逐行转发到日志
+// logWriter 把子进程 stderr 逐行转发到日志（过滤 Chromium 常见噪音）
 type logWriter struct {
 	f func(string, ...interface{})
 }
 
+// 常见噪音：snap 的 AppArmor DBus 报错、GPU 相关警告等（不影响渲染）
+var browserNoise = []string{
+	"org.freedesktop.DBus",
+	"gpu_blocklist",
+	"maxDynamicUniformBuffers",
+	"maxDynamicStorageBuffers",
+	"Unable to get gpu adapter",
+	"dbus/object_proxy",
+}
+
+func isBrowserNoise(line string) bool {
+	for _, n := range browserNoise {
+		if strings.Contains(line, n) {
+			return true
+		}
+	}
+	return false
+}
+
 func (w logWriter) Write(p []byte) (int, error) {
 	for _, line := range strings.Split(string(p), "\n") {
-		if t := strings.TrimSpace(line); t != "" {
+		if t := strings.TrimSpace(line); t != "" && !isBrowserNoise(t) {
 			w.f("[browser] %s", t)
 		}
 	}
