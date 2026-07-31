@@ -15,12 +15,14 @@ import (
 	"time"
 )
 
-// 浏览器可执行文件候选（按顺序探测）
+// 浏览器可执行文件候选（按顺序探测）。
+// 注意：snap 版 chromium（/snap/bin/chromium）受 AppArmor 限制无法连接 Xvfb，必须跳过，
+// 因此优先使用 Google Chrome（deb 版）。
 var browserCandidates = []string{
-	"chromium",
-	"chromium-browser",
 	"google-chrome-stable",
 	"google-chrome",
+	"chromium",
+	"chromium-browser",
 	"chrome",
 }
 
@@ -113,16 +115,20 @@ func (m *Manager) Ensure(disp, url string, w, h int) error {
 
 // startChromeLocked 探测浏览器并启动（--kiosk 全屏无边框，只显示网页内容）
 func (m *Manager) startChromeLocked(disp, url string, w, h int) error {
-	// 探测浏览器可执行文件
+	// 探测浏览器可执行文件（跳过 snap 版：AppArmor 沙箱无法连接 Xvfb）
 	bin := ""
 	for _, c := range browserCandidates {
 		if p, err := exec.LookPath(c); err == nil {
+			if strings.HasPrefix(p, "/snap/") {
+				m.logf("[browser] 跳过 snap 版 %s（AppArmor 限制无法连接 Xvfb）", p)
+				continue
+			}
 			bin = p
 			break
 		}
 	}
 	if bin == "" {
-		return fmt.Errorf("未找到 Chromium/Chrome，请安装（推荐 deb 版 chromium 或 google-chrome；snap 版无法连接 Xvfb）")
+		return fmt.Errorf("未找到可用的 Chrome/Chromium（snap 版不可用）。请安装 Google Chrome deb 版后重试")
 	}
 
 	m.logf("[browser] 打开 %s (%dx%d) -> %s", bin, w, h, url)

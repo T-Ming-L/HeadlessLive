@@ -80,6 +80,7 @@ func (h *Handler) StartOutput(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "场景渲染规格构建失败: " + err.Error()})
 		return
 	}
+	h.logSkipped(rs)
 	// 浏览器源：自动启动 Xvfb + Chromium
 	h.ensureBrowsers(rs)
 
@@ -130,6 +131,7 @@ func (h *Handler) StartPreview(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "场景渲染规格构建失败: " + err.Error()})
 		return
 	}
+	h.logSkipped(rs)
 	// 浏览器源：自动启动 Xvfb + Chromium
 	h.ensureBrowsers(rs)
 	// 同一视频设备只允许一个采集进程（避免并发读 v4l2 占满带宽导致卡死），

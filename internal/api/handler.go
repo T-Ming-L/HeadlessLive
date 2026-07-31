@@ -63,6 +63,16 @@ func (h *Handler) ensureBrowsers(rs *scene.RenderSpec) {
 	}
 }
 
+// logSkipped 将构建时被跳过的源广播到日志（帮助定位"为什么没显示"）
+func (h *Handler) logSkipped(rs *scene.RenderSpec) {
+	if rs == nil {
+		return
+	}
+	for _, s := range rs.Skipped {
+		h.hub.BroadcastLog("[api] ⚠️ 已跳过不可用的源: " + s)
+	}
+}
+
 // genID 生成带前缀的短 ID
 func genID(prefix string) string {
 	return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano()%100000000)
