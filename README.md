@@ -123,7 +123,7 @@ npm run dev
 
 ### 浏览器源（browser）
 
-Linux 下用虚拟 X 显示器 + Chromium 渲染，FFmpeg `x11grab` 捕获。
+Linux 下用虚拟 X 显示器 + Chromium 渲染，FFmpeg x11grab 捕获。
 
 > **安装 Chromium**：Debian / Ubuntu 默认源已移除 `chromium` 包，`apt install chromium`
 > 会报 `Package 'chromium' has no installation candidate`。请改用 snap：
