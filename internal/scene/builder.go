@@ -280,7 +280,7 @@ func buildVideoInput(src *model.Source) (*Input, error) {
 		}
 		in.Kind = InputText
 		in.params = []string{"-f", "lavfi", "-i", fmt.Sprintf(
-			"color=c=black@0.0:s=%dx%d:r=30,drawtext=fontfile='%s':textfile='%s':fontsize=%d:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2",
+			"color=c=black@0.0:s=%dx%d:r=30:format=rgba,drawtext=fontfile='%s':textfile='%s':fontsize=%d:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2",
 			textCanvasW, textCanvasH, font, tf, fs, fc)}
 		in.path = ""
 
