@@ -26,12 +26,12 @@
 
 **Linux（推荐，功能完整）**
 
-| 依赖          | 用途                                 |
-| ------------- | ------------------------------------ |
-| FFmpeg 4.x+   | 核心引擎：采集、滤镜合成、编码、推流 |
-| v4l-utils     | 采集卡设备探测（`v4l2-ctl`）         |
-| alsa-utils    | 声卡设备探测（`arecord`）            |
-| vainfo        | Intel VAAPI 硬编探测                 |
+| 依赖        | 用途                                 |
+| ----------- | ------------------------------------ |
+| FFmpeg 4.x+ | 核心引擎：采集、滤镜合成、编码、推流 |
+| v4l-utils   | 采集卡设备探测（`v4l2-ctl`）         |
+| alsa-utils  | 声卡设备探测（`arecord`）            |
+| vainfo      | Intel VAAPI 硬编探测                 |
 
 ```bash
 sudo apt install ffmpeg v4l-utils vainfo alsa-utils
