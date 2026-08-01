@@ -26,6 +26,16 @@ var browserCandidates = []string{
 	"chrome",
 }
 
+// 常见安装路径（PATH 异常时的后备探测）
+var browserPaths = []string{
+	"/usr/bin/google-chrome-stable",
+	"/usr/bin/google-chrome",
+	"/opt/google/chrome/chrome",
+	"/usr/bin/chromium",
+	"/usr/bin/chromium-browser",
+	"/snap/bin/chromium",
+}
+
 // displayProc 一个虚拟显示器上的进程组
 // （记录当前打开的 URL/尺寸，变化时自动重启浏览器以支持切换网站）
 type displayProc struct {
@@ -185,14 +195,23 @@ func (m *Manager) startChromeLocked(disp, url string, w, h int) error {
 	for _, c := range browserCandidates {
 		if p, err := exec.LookPath(c); err == nil {
 			bin = p
-			if strings.HasPrefix(p, "/snap/") {
-				m.logf("[browser] 使用 snap 版 %s（可运行，若异常建议安装 Google Chrome deb 版）", p)
-			}
 			break
+		}
+	}
+	// PATH 里没有时，直接探测常见安装路径（兼容 PATH 异常 / 服务环境）
+	if bin == "" {
+		for _, p := range browserPaths {
+			if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+				bin = p
+				break
+			}
 		}
 	}
 	if bin == "" {
 		return fmt.Errorf("未找到 Chrome/Chromium，请安装（推荐 Google Chrome deb 版）后重试")
+	}
+	if strings.HasPrefix(bin, "/snap/") {
+		m.logf("[browser] 使用 snap 版 %s（可运行，若异常建议安装 Google Chrome deb 版）", bin)
 	}
 
 	m.logf("[browser] 打开 %s (%dx%d) -> %s", bin, w, h, url)
