@@ -308,14 +308,10 @@ func buildVideoInput(src *model.Source) (*Input, error) {
 		}
 		in.path = src.FilePath
 
-	case model.SourceScreen, model.SourceBrowser:
+	case model.SourceScreen:
 		disp := src.Display
 		if disp == "" {
-			if src.Type == model.SourceBrowser {
-				disp = ":99" // 浏览器源默认虚拟显示器
-			} else {
-				disp = ":0"
-			}
+			disp = ":0"
 		}
 		bw, bh, bfps := src.BrowserW, src.BrowserH, src.BrowserFPS
 		if bw <= 0 {
@@ -618,6 +614,12 @@ func buildGenericFilters(filters []model.Filter) []string {
 			out = append(out, "hqdn3d")
 		case "deinterlace":
 			out = append(out, "yadif")
+		case "chromakey":
+			// 抠除背景色（配合浏览器源黑底实现透明融合），输出带 alpha
+			out = append(out, fmt.Sprintf("chromakey=color=%s:similarity=%v:blend=%v",
+				filterParam(f, "color", "black"),
+				filterParam(f, "similarity", "0.1"),
+				filterParam(f, "blend", "0.05")))
 		}
 	}
 	return out

@@ -15,14 +15,13 @@ const (
 	SourceScreen      SourceType = "screen"       // 屏幕捕获 (X11)
 	SourceRTMP        SourceType = "rtmp_source"  // RTMP 拉流
 	SourceColor       SourceType = "color"        // 纯色背景
-	SourceBrowser     SourceType = "browser"      // 浏览器网页 (Xvfb + Chromium + x11grab)
 )
 
 // IsVideoSource 判断源是否提供视频画面
 func (s SourceType) IsVideoSource() bool {
 	switch s {
 	case SourceVideoDevice, SourceImage, SourceMediaFile, SourceScreen,
-		SourceRTMP, SourceColor, SourceBrowser:
+		SourceRTMP, SourceColor:
 		return true
 	}
 	return false
@@ -70,10 +69,9 @@ type Source struct {
 	FontColor string `json:"font_color,omitempty" yaml:"font_color,omitempty"`
 	Loop      bool   `json:"loop,omitempty" yaml:"loop,omitempty"`
 
-	// --- 浏览器源 ---
-	URL        string `json:"url,omitempty" yaml:"url,omitempty"`
-	BrowserW   int    `json:"browser_w,omitempty" yaml:"browser_w,omitempty"`     // 渲染宽，默认 1280
-	BrowserH   int    `json:"browser_h,omitempty" yaml:"browser_h,omitempty"`     // 渲染高，默认 720
+	// --- 屏幕捕获（宽/高/帧率沿用 Browser 字段名，见前端） ---
+	BrowserW   int    `json:"browser_w,omitempty" yaml:"browser_w,omitempty"`     // 捕获宽，默认 1280
+	BrowserH   int    `json:"browser_h,omitempty" yaml:"browser_h,omitempty"`     // 捕获高，默认 720
 	BrowserFPS int    `json:"browser_fps,omitempty" yaml:"browser_fps,omitempty"` // 捕获帧率，默认 30
 
 	// --- 屏幕捕获 ---

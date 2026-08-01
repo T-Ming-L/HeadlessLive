@@ -8,7 +8,7 @@
 ## 功能
 
 - ✅ **无头运行（Headless）**：纯命令行部署在 Linux 服务器，无需显示器/GUI，全部通过 Web 控制
-- ✅ **源（Source）**：采集卡 / 音频 / 图片 / 文字 / 媒体文件 / 屏幕 / RTMP 拉流 / 纯色 / **浏览器**
+- ✅ **源（Source）**：采集卡 / 音频 / 图片 / 文字 / 媒体文件 / 屏幕 / RTMP 拉流 / 纯色
 - ✅ **场景（Scene）**：多场景、画布分辨率、Z 轴叠放、位置/尺寸/裁剪/透明度、拖拽布局
 - ✅ **输出（Output）**：RTMP 推流 / 本地录制 / SRT，多输出并行
 - ✅ **动态滤镜链**：`filter_complex` 多输入叠加（overlay）+ 多路音频混音（amix）
@@ -29,21 +29,19 @@
 | 依赖          | 用途                                 |
 | ------------- | ------------------------------------ |
 | FFmpeg 4.x+   | 核心引擎：采集、滤镜合成、编码、推流 |
-| v4l-utils     | 采集卡设备探测（`v4l2-ctl`）       |
-| alsa-utils    | 声卡设备探测（`arecord`）          |
+| v4l-utils     | 采集卡设备探测（`v4l2-ctl`）         |
+| alsa-utils    | 声卡设备探测（`arecord`）            |
 | vainfo        | Intel VAAPI 硬编探测                 |
-| Xvfb + Chrome | 可选，仅「浏览器源」需要             |
 
 ```bash
 sudo apt install ffmpeg v4l-utils vainfo alsa-utils
 # 文字源（可选，中文需 CJK 字体）：sudo apt install fonts-noto-cjk
-# 浏览器源（可选）：sudo apt install xvfb，浏览器安装见「浏览器源」章节（推荐 deb 版）
 ```
 
 **Windows（单文件版）**
 
-| 依赖   | 说明                                                                                                      |
-| ------ | --------------------------------------------------------------------------------------------------------- |
+| 依赖   | 说明                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------- |
 | FFmpeg | 需自行安装并加入 PATH（如[gyan.dev 构建](https://www.gyan.dev/ffmpeg/builds/)），程序启动时调用 `ffmpeg` |
 
 - ✅ 单文件 `HeadlessLive-windows-amd64.exe`，无需 Go / Node 或其它运行时
@@ -55,19 +53,19 @@ sudo apt install ffmpeg v4l-utils vainfo alsa-utils
 
 ### 编译环境（可选 —— 直接下载 Release 二进制则不需要）
 
-| 依赖    | 版本  | 用途                   |
-| ------- | ----- | ---------------------- |
-| Go      | 1.22+ | 后端编译               |
+| 依赖    | 版本  | 用途                 |
+| ------- | ----- | -------------------- |
+| Go      | 1.22+ | 后端编译             |
 | Node.js | 18+   | 仅构建前端（`web/`） |
 
 ## 依赖与引用
 
 ### Go 后端（`go.mod`）
 
-| 库                               | 版本   | 用途                       |
-| -------------------------------- | ------ | -------------------------- |
-| `github.com/gin-gonic/gin`     | v1.8.1 | HTTP 路由 / REST API       |
-| `github.com/gorilla/websocket` | v1.5.1 | WebSocket 日志与状态推送   |
+| 库                             | 版本   | 用途                     |
+| ------------------------------ | ------ | ------------------------ |
+| `github.com/gin-gonic/gin`     | v1.8.1 | HTTP 路由 / REST API     |
+| `github.com/gorilla/websocket` | v1.5.1 | WebSocket 日志与状态推送 |
 | `gopkg.in/yaml.v3`             | v3.0.1 | `scenes.yaml` 配置持久化 |
 
 ### 前端（`web/`）
@@ -81,7 +79,6 @@ sudo apt install ffmpeg v4l-utils vainfo alsa-utils
 ### 系统级依赖
 
 - **FFmpeg**：核心引擎（采集 → 滤镜 → 编码 → 推流）
-- **Chromium + Xvfb**：浏览器源（可选）
 
 ### 参考项目
 
@@ -120,46 +117,6 @@ npm run dev
 
 浏览器访问 `http://localhost:5173` 进行前端开发，API 请求会代理到后端 8080。
 
-### 浏览器源（browser）
-
-场景中加入浏览器源后，**启动预览或推流时会自动拉起 Xvfb 虚拟显示器 + 浏览器**，
-无需手动启动；退出程序时自动清理。
-
-> **安装浏览器（必须，推荐 deb 版，三选一）**
->
-> 1. **Google Chrome**（与 Xvfb 兼容最好，Google 源可达时首选）：
->    ```bash
->    sudo apt install xvfb
->    wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
->    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
->    sudo apt update && sudo apt install google-chrome-stable
->    ```
-> 2. **deb 版 Chromium（受限网络首选，Linux Mint 仓库）**：
->    新 Debian/Ubuntu 官方源已移除 chromium 的 deb 包，而 **Linux Mint 仓库提供真正的 deb 版 chromium**
->    （Mint 21 基于 Ubuntu 22.04，包可通用）。内网/受限网络无需 Google 源：
->    ```bash
->    sudo apt install xvfb
->    # 添加 Mint 仓库；内网服务器可直接 trusted=yes 跳过签名校验
->    echo "deb [arch=amd64 trusted=yes] http://packages.linuxmint.com victoria main upstream import" | sudo tee /etc/apt/sources.list.d/mint.list
->    # 限定只从 Mint 仓库装 chromium，防止覆盖系统其它包
->    printf 'Package: *\nPin: origin packages.linuxmint.com\nPin-Priority: 100\n' | sudo tee /etc/apt/preferences.d/mint-pin
->    sudo apt update && sudo apt install chromium
->    ```
->    装完后二进制位于 `/usr/bin/chromium`，程序自动探测。若想严格验证签名，可先导入新版公钥：
->    `gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys A6616109451BBBF2`
->    （旧版 `linuxmint-keyring`（2022 及以前）不含 2024 年更换的新公钥，会报 `NO_PUBKEY`）。
-> 3. **snap 版 Chromium**（`sudo snap install chromium`，程序后备）：
->    程序会自动探测 `/snap/bin/chromium` 并作为后备使用，多数环境可正常渲染；
->    个别环境受 snap 沙箱限制可能黑屏，**优先 deb 版**。
-
-浏览器源在 Web UI 中配置：**URL**（要打开的网页）、**渲染宽/高**（默认 1280×720）、
-**帧率**（默认 30）；虚拟显示器默认 `:99`，也可在源属性中指定。
-
-- 浏览器以 **kiosk 全屏模式**启动，无窗口边框/工具栏，x11grab 只捕获网页内容
-- **切换网站**：修改源属性里的 URL，重新启动预览/推流即会自动重载浏览器
-- **心率/数据插件**（如 hypertate）：把插件提供的网页 URL 填进浏览器源即可，
-  例如 hypertate 的 OBS 浏览器源地址可直接使用
-
 ## 快速开始
 
 > 📥 从 [最新 Release](https://github.com/T-Ming-L/HeadlessLive/releases/latest) 下载对应平台的单文件二进制，**无需自行编译**。
@@ -167,7 +124,7 @@ npm run dev
 ### Linux
 
 ```bash
-# 1. 安装系统依赖（浏览器源另需 xvfb + Chrome，见「浏览器源」章节）
+# 1. 安装系统依赖
 sudo apt install ffmpeg v4l-utils vainfo alsa-utils
 
 # 2. 下载 Linux 单文件版（最新 Release）
@@ -242,24 +199,24 @@ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o HeadlessLiv
 
 ## API
 
-| 方法                | 路径                                             | 说明                              |
-| ------------------- | ------------------------------------------------ | --------------------------------- |
-| GET/POST/PUT/DELETE | `/api/sources`                                 | 源 CRUD（`/api/sources/:id`）   |
-| POST                | `/api/sources/:id/probe`                       | 探测源属性                        |
-| GET/POST/PUT/DELETE | `/api/scenes`                                  | 场景 CRUD（`/api/scenes/:id`）  |
-| POST                | `/api/scenes/:id/activate`                     | 切换当前场景                      |
-| GET/POST/PUT/DELETE | `/api/outputs`                                 | 输出 CRUD（`/api/outputs/:id`） |
-| POST                | `/api/outputs/:id/start`                       | 启动输出（推流/录制）             |
-| POST                | `/api/outputs/:id/stop`                        | 停止输出                          |
-| GET                 | `/api/status`                                  | 全量状态                          |
-| POST                | `/api/preview/start` · `/stop`              | 预览控制                          |
-| GET                 | `/preview`                                     | MJPEG 预览流                      |
-| POST                | `/api/upload/image` · `/media`              | 上传素材                          |
-| GET                 | `/api/devices/video` · `/audio`             | 扫描设备                          |
-| GET/PUT             | `/api/devices/:dev/controls` · `/control`   | 设备控制项                        |
-| GET                 | `/api/bili/qrcode` · `/poll` · `/status` | B 站扫码登录                      |
-| GET/POST            | `/api/bili/areas` · `/start` · `/stop`   | B 站开播/停播/取推流密钥          |
-| WS                  | `/ws`                                          | WebSocket（日志+状态）            |
+| 方法                | 路径                                      | 说明                            |
+| ------------------- | ----------------------------------------- | ------------------------------- |
+| GET/POST/PUT/DELETE | `/api/sources`                            | 源 CRUD（`/api/sources/:id`）   |
+| POST                | `/api/sources/:id/probe`                  | 探测源属性                      |
+| GET/POST/PUT/DELETE | `/api/scenes`                             | 场景 CRUD（`/api/scenes/:id`）  |
+| POST                | `/api/scenes/:id/activate`                | 切换当前场景                    |
+| GET/POST/PUT/DELETE | `/api/outputs`                            | 输出 CRUD（`/api/outputs/:id`） |
+| POST                | `/api/outputs/:id/start`                  | 启动输出（推流/录制）           |
+| POST                | `/api/outputs/:id/stop`                   | 停止输出                        |
+| GET                 | `/api/status`                             | 全量状态                        |
+| POST                | `/api/preview/start` · `/stop`            | 预览控制                        |
+| GET                 | `/preview`                                | MJPEG 预览流                    |
+| POST                | `/api/upload/image` · `/media`            | 上传素材                        |
+| GET                 | `/api/devices/video` · `/audio`           | 扫描设备                        |
+| GET/PUT             | `/api/devices/:dev/controls` · `/control` | 设备控制项                      |
+| GET                 | `/api/bili/qrcode` · `/poll` · `/status`  | B 站扫码登录                    |
+| GET/POST            | `/api/bili/areas` · `/start` · `/stop`    | B 站开播/停播/取推流密钥        |
+| WS                  | `/ws`                                     | WebSocket（日志+状态）          |
 
 ## 项目结构
 

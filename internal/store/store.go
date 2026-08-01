@@ -250,11 +250,6 @@ func DefaultData() *model.Store {
 				Enabled: true, FilePath: "uploads/logo.png", Loop: true,
 			},
 			{
-				ID: "src-browser", Name: "浏览器面板", Type: model.SourceBrowser,
-				Enabled: false, URL: "https://example.com",
-				BrowserW: 1280, BrowserH: 720, BrowserFPS: 30,
-			},
-			{
 				ID: "src-mic", Name: "USB 声卡", Type: model.SourceAudioDevice,
 				Enabled: true,
 				// "usb" = 自动探测 USB 声卡（即插即用，如 Synido Voice 100），
@@ -269,7 +264,6 @@ func DefaultData() *model.Store {
 				Items: []model.SceneItem{
 					{SourceID: "src-camera", X: 0, Y: 0, Width: 1920, Height: 1080, Opacity: 1.0, ZIndex: 0, Visible: true},
 					{SourceID: "src-logo", X: 20, Y: 20, Width: 240, Height: 135, Opacity: 1.0, ZIndex: 1, Visible: true},
-					{SourceID: "src-browser", X: 0, Y: 0, Width: 1920, Height: 1080, Opacity: 1.0, ZIndex: 2, Visible: false},
 				},
 			},
 		},

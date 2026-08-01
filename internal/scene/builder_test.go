@@ -133,11 +133,6 @@ func testSources() map[string]*model.Source {
 			ID: "logo", Name: "Logo", Type: model.SourceColor,
 			Enabled: true, Color: "red",
 		},
-		"browser": {
-			ID: "browser", Name: "浏览器", Type: model.SourceBrowser,
-			Enabled: true, URL: "https://example.com",
-			BrowserW: 1280, BrowserH: 720, BrowserFPS: 30,
-		},
 		"mic": {
 			ID: "mic", Name: "麦克风", Type: model.SourceAudioDevice,
 			Enabled: true, AudioDevice: "hw:0", SampleRate: 48000, Channels: 2, Volume: 0.5,
@@ -192,7 +187,6 @@ func TestBuildWithAudioMix(t *testing.T) {
 		ID: "s2", Name: "含音频", CanvasW: 1280, CanvasH: 720, FPS: 30,
 		Items: []model.SceneItem{
 			{SourceID: "cam", X: 0, Y: 0, Width: 1280, Height: 720, Opacity: 1.0, ZIndex: 0, Visible: true},
-			{SourceID: "browser", X: 0, Y: 0, Width: 1280, Height: 720, Opacity: 1.0, ZIndex: 1, Visible: true},
 		},
 	}
 
@@ -219,15 +213,6 @@ func TestBuildWithAudioMix(t *testing.T) {
 	}
 	if rs.AudioOut == "" {
 		t.Error("缺少音频输出标签")
-	}
-
-	// 浏览器源走 x11grab
-	for _, in := range rs.Inputs {
-		if in.Source != nil && in.Source.Type == model.SourceBrowser {
-			if in.Kind != InputX11 {
-				t.Errorf("浏览器源应为 x11grab，实际 %s", in.Kind)
-			}
-		}
 	}
 }
 

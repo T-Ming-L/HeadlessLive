@@ -15,7 +15,6 @@ const TYPES = [
   "screen",
   "rtmp_source",
   "color",
-  "browser",
 ];
 
 const type = ref("video_device");
@@ -36,7 +35,6 @@ const form = ref({
   text: "直播文字",
   font_size: 48,
   font_color: "#ffffff",
-  url: "",
   browser_w: 1280,
   browser_h: 720,
   browser_fps: 30,
@@ -99,7 +97,6 @@ const TYPE_FIELDS = {
   ],
   rtmp_source: ["name", "enabled", "file_path"],
   color: ["name", "enabled", "color"],
-  browser: ["name", "enabled", "url", "browser_w", "browser_h", "browser_fps"],
 };
 
 // 图片/媒体：先上传到服务器，自动填路径
@@ -314,28 +311,6 @@ async function create() {
                 style="height: 28px; padding: 2px"
               />
             </div>
-          </div>
-        </template>
-
-        <!-- 浏览器 -->
-        <template v-else-if="type === 'browser'">
-          <div class="field">
-            <label>URL</label
-            ><input v-model="form.url" placeholder="https://..." />
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label>渲染宽</label
-              ><input type="number" v-model.number="form.browser_w" />
-            </div>
-            <div class="field">
-              <label>渲染高</label
-              ><input type="number" v-model.number="form.browser_h" />
-            </div>
-          </div>
-          <div class="field">
-            <label>帧率</label
-            ><input type="number" v-model.number="form.browser_fps" />
           </div>
         </template>
 

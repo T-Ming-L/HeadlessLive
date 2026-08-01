@@ -48,7 +48,6 @@ export function sourceTypeLabel(t) {
     screen: '🖥 屏幕',
     rtmp_source: '📡 RTMP拉流',
     color: '🎨 纯色',
-    browser: '🌐 浏览器',
   }
   return map[t] || t
 }

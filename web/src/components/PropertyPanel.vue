@@ -447,44 +447,6 @@ async function doUpload(kind) {
         </div>
       </template>
 
-      <!-- 浏览器 -->
-      <template v-else-if="selectedSource.type === 'browser'">
-        <div class="field">
-          <label>URL</label
-          ><input
-            v-model="selectedSource.url"
-            @input="saveSource"
-            placeholder="https://..."
-          />
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>渲染宽</label
-            ><input
-              type="number"
-              v-model.number="selectedSource.browser_w"
-              @input="saveSource"
-            />
-          </div>
-          <div class="field">
-            <label>渲染高</label
-            ><input
-              type="number"
-              v-model.number="selectedSource.browser_h"
-              @input="saveSource"
-            />
-          </div>
-        </div>
-        <div class="field">
-          <label>帧率</label
-          ><input
-            type="number"
-            v-model.number="selectedSource.browser_fps"
-            @input="saveSource"
-          />
-        </div>
-      </template>
-
       <!-- 屏幕 -->
       <template v-else-if="selectedSource.type === 'screen'">
         <div class="field">
