@@ -37,7 +37,7 @@
 ```bash
 sudo apt install ffmpeg v4l-utils vainfo alsa-utils
 # 文字源（可选，中文需 CJK 字体）：sudo apt install fonts-noto-cjk
-# 浏览器源（可选）：sudo apt install xvfb，浏览器安装见「浏览器源」章节（勿用 snap 版 chromium）
+# 浏览器源（可选）：sudo apt install xvfb，浏览器安装见「浏览器源」章节（推荐 deb 版）
 ```
 
 **Windows（单文件版）**
@@ -125,18 +125,32 @@ npm run dev
 场景中加入浏览器源后，**启动预览或推流时会自动拉起 Xvfb 虚拟显示器 + 浏览器**，
 无需手动启动；退出程序时自动清理。
 
-> **安装浏览器（必须，二选一）**
+> **安装浏览器（必须，推荐 deb 版，三选一）**
 >
-> - 推荐 **Google Chrome**（与 Xvfb 兼容最好）：
->   ```bash
->   sudo apt install xvfb
->   wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
->   echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
->   sudo apt update && sudo apt install google-chrome-stable
->   ```
-> - 或 deb 版 `chromium`（新 Debian/Ubuntu 默认源已移除该包，需从其它渠道安装）
->
-> ⚠️ **不要用 snap 版 Chromium**：沙箱限制无法连接 Xvfb 虚拟显示器，画面不会显示。
+> 1. **Google Chrome**（与 Xvfb 兼容最好，Google 源可达时首选）：
+>    ```bash
+>    sudo apt install xvfb
+>    wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
+>    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+>    sudo apt update && sudo apt install google-chrome-stable
+>    ```
+> 2. **deb 版 Chromium（受限网络首选，Linux Mint 仓库）**：
+>    新 Debian/Ubuntu 官方源已移除 chromium 的 deb 包，而 **Linux Mint 仓库提供真正的 deb 版 chromium**
+>    （Mint 21 基于 Ubuntu 22.04，包可通用）。内网/受限网络无需 Google 源：
+>    ```bash
+>    sudo apt install xvfb
+>    # 添加 Mint 仓库；内网服务器可直接 trusted=yes 跳过签名校验
+>    echo "deb [arch=amd64 trusted=yes] http://packages.linuxmint.com victoria main upstream import" | sudo tee /etc/apt/sources.list.d/mint.list
+>    # 限定只从 Mint 仓库装 chromium，防止覆盖系统其它包
+>    printf 'Package: *\nPin: origin packages.linuxmint.com\nPin-Priority: 100\n' | sudo tee /etc/apt/preferences.d/mint-pin
+>    sudo apt update && sudo apt install chromium
+>    ```
+>    装完后二进制位于 `/usr/bin/chromium`，程序自动探测。若想严格验证签名，可先导入新版公钥：
+>    `gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys A6616109451BBBF2`
+>    （旧版 `linuxmint-keyring`（2022 及以前）不含 2024 年更换的新公钥，会报 `NO_PUBKEY`）。
+> 3. **snap 版 Chromium**（`sudo snap install chromium`，程序后备）：
+>    程序会自动探测 `/snap/bin/chromium` 并作为后备使用，多数环境可正常渲染；
+>    个别环境受 snap 沙箱限制可能黑屏，**优先 deb 版**。
 
 浏览器源在 Web UI 中配置：**URL**（要打开的网页）、**渲染宽/高**（默认 1280×720）、
 **帧率**（默认 30）；虚拟显示器默认 `:99`，也可在源属性中指定。
