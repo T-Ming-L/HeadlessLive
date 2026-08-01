@@ -6,7 +6,41 @@
 2. **帧率** —— `SetWindowlessFrameRate` 下实际回调帧率
 3. **CPU** —— 本进程 + chromium 子进程的总占用
 
-## 在 N100 上搭建（一次）
+## 推荐流程：WSL2 隔离构建（服务器零编译环境）
+
+编译环境全在 Windows 的 WSL2 里，N100 服务器只解压运行，不装任何编译工具，清理 = `wsl --unregister Ubuntu`。
+
+```powershell
+# 1. Windows 侧装 WSL2（一次）
+wsl --install -d Ubuntu
+
+# 2. 把本目录拷进 WSL（建议放家目录，避免 /mnt 性能问题）
+wsl
+cp -r /mnt/e/WORK/Web-RTMP/tools/cef-osr-test ~/cef-osr-test
+cd ~/cef-osr-test
+
+# 3. 一键构建（自动装 Go/GTK/CEF 二进制 + 编译 + 打包，全程国内镜像）
+bash build-linux-cef.sh
+
+# 4. 产物在 dist/cef-osr-test-linux.tar.gz，拷到 N100
+exit
+scp e:\WORK\Web-RTMP\tools\cef-osr-test\dist\cef-osr-test-linux.tar.gz root@N100:~/
+```
+
+N100 上：
+
+```bash
+tar xzf cef-osr-test-linux.tar.gz && cd cef-osr-test-linux
+pkill Xvfb; Xvfb :99 -screen 0 1920x1080x24 -ac &
+sudo apt install -y libgtk-3-0   # 若提示缺 GTK 运行时（几 MB）
+DISPLAY=:99 ./run.sh -fps 30 -duration 20 -log test.log
+```
+
+`run.sh` 会自动用包内的 CEF 运行库（`LD_LIBRARY_PATH` 指向 `runtime/`），**不污染服务器系统**。
+
+---
+
+## 备用：直接在 N100 上搭建（不推荐，会留编译残留）
 
 ```bash
 # 1. 装 GTK3（energye/cef Linux 依赖）
