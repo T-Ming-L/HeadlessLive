@@ -20,7 +20,7 @@ const (
 // IsVideoSource 判断源是否提供视频画面
 func (s SourceType) IsVideoSource() bool {
 	switch s {
-	case SourceVideoDevice, SourceImage, SourceMediaFile, SourceScreen,
+	case SourceVideoDevice, SourceImage, SourceText, SourceMediaFile, SourceScreen,
 		SourceRTMP, SourceColor:
 		return true
 	}
