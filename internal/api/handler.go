@@ -44,11 +44,13 @@ func NewHandler(st *store.Store, manager *ffmpeg.Manager, preview *ffmpeg.Previe
 	}
 }
 
-// ensureBrowsers 渲染规格含浏览器源时，自动启动 Xvfb + Chromium（无需手动拉起）
-func (h *Handler) ensureBrowsers(rs *scene.RenderSpec) {
+// ensureBrowsers 渲染规格含浏览器源时，自动启动 Xvfb + Chromium（无需手动拉起）。
+// 返回第一个失败原因（调用方可据此决定是否剔除浏览器源）。
+func (h *Handler) ensureBrowsers(rs *scene.RenderSpec) error {
 	if h.browser == nil || rs == nil {
-		return
+		return nil
 	}
+	var firstErr error
 	for _, in := range rs.Inputs {
 		if in.Kind != scene.InputX11 || in.Source == nil || in.Source.Type != model.SourceBrowser {
 			continue
@@ -59,8 +61,41 @@ func (h *Handler) ensureBrowsers(rs *scene.RenderSpec) {
 		}
 		if err := h.browser.Ensure(disp, in.Source.URL, in.Source.BrowserW, in.Source.BrowserH); err != nil {
 			h.hub.BroadcastLog("[browser] " + err.Error())
+			if firstErr == nil {
+				firstErr = err
+			}
 		}
 	}
+	return firstErr
+}
+
+// buildSpec 构建渲染规格。浏览器源无法启动时自动剔除（其余源照常渲染），
+// 避免 x11grab 连不上 :99 导致整个预览/推流失败。
+func (h *Handler) buildSpec(sc *model.Scene) (*scene.RenderSpec, error) {
+	rs, err := h.renderSpec(sc)
+	if err != nil {
+		return nil, err
+	}
+	if h.browser == nil {
+		return rs, nil
+	}
+	if err := h.ensureBrowsers(rs); err != nil {
+		h.hub.BroadcastLog("[browser] ⚠️ " + err.Error() + "，本次已剔除浏览器源")
+		return h.renderSpecNoBrowser(sc)
+	}
+	return rs, nil
+}
+
+// renderSpecNoBrowser 构建不含浏览器源的渲染规格
+func (h *Handler) renderSpecNoBrowser(sc *model.Scene) (*scene.RenderSpec, error) {
+	srcs := make(map[string]*model.Source)
+	for _, s := range h.store.Data().Sources {
+		if s.Type == model.SourceBrowser {
+			continue
+		}
+		srcs[s.ID] = s
+	}
+	return scene.Build(sc, srcs)
 }
 
 // logSkipped 将构建时被跳过的源广播到日志（帮助定位"为什么没显示"）
