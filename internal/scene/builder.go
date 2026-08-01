@@ -259,9 +259,10 @@ func buildVideoInput(src *model.Source) (*Input, error) {
 		if src.Text == "" {
 			return nil, fmt.Errorf("%w: 文字源缺少内容", ErrDeviceUnavailable)
 		}
-		// drawtext 需要系统字体；缺失时给出明确提示而不是 ffmpeg 报错
-		if !fontAvailable() {
-			return nil, fmt.Errorf("%w: 未检测到可用字体，请先安装（中文建议 fonts-noto-cjk）", ErrDeviceUnavailable)
+		// drawtext 需要中文字体文件（font=Sans 只会匹配英文 DejaVu，中文变方块）
+		font, err := findCJKFont()
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrDeviceUnavailable, err)
 		}
 		// 用 lavfi 生成透明画布 + drawtext 文字层
 		// （textfile 传内容避免转义，画布 1280x720，场景内等比缩放铺满场景项）
@@ -279,8 +280,8 @@ func buildVideoInput(src *model.Source) (*Input, error) {
 		}
 		in.Kind = InputText
 		in.params = []string{"-f", "lavfi", "-i", fmt.Sprintf(
-			"color=c=black@0.0:s=%dx%d:r=30,drawtext=font=Sans:textfile='%s':fontsize=%d:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2",
-			textCanvasW, textCanvasH, tf, fs, fc)}
+			"color=c=black@0.0:s=%dx%d:r=30,drawtext=fontfile='%s':textfile='%s':fontsize=%d:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2",
+			textCanvasW, textCanvasH, font, tf, fs, fc)}
 		in.path = ""
 
 	case model.SourceColor:
@@ -520,23 +521,43 @@ func writeDrawTextFile(content string) (string, error) {
 	return f.Name(), nil
 }
 
-// fontAvailable 检测系统是否有可用字体（drawtext 渲染前提）
-func fontAvailable() bool {
-	// 优先用 fontconfig
-	if out, err := exec.Command("fc-list", ":", "family").Output(); err == nil {
-		return len(strings.TrimSpace(string(out))) > 0
+// findCJKFont 查找中文字体文件（drawtext fontfile 用）。
+// font=Sans 会被 fontconfig 解析为英文 DejaVu，中文渲染成方块；
+// 必须显式指定 CJK 字体文件路径。
+func findCJKFont() (string, error) {
+	candidates := []string{
+		// Linux：Noto CJK（sudo apt install fonts-noto-cjk）
+		"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+		"/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+		"/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+		// Debian 系路径
+		"/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+		// 文泉驿 / Droid fallback
+		"/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+		"/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+		"/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+		// macOS
+		"/System/Library/Fonts/PingFang.ttc",
+		"/System/Library/Fonts/STHeiti Light.ttc",
+		// Windows
+		`C:/Windows/Fonts/msyh.ttc`,   // 微软雅黑
+		`C:/Windows/Fonts/simhei.ttf`,  // 黑体
+		`C:/Windows/Fonts/simsun.ttc`,  // 宋体
 	}
-	// fc-list 不存在时，检查常见字体目录
-	for _, dir := range []string{
-		"/usr/share/fonts", "/usr/local/share/fonts",
-		"/System/Library/Fonts",
-		`C:\Windows\Fonts`, `C:\WINNT\Fonts`,
-	} {
-		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
-			return true
+	for _, p := range candidates {
+		if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+			return p, nil
 		}
 	}
-	return false
+	// 兜底：用 fontconfig 查 CJK 族名对应的实际文件
+	if out, err := exec.Command("fc-match", "-f", "%{file}", "Noto Sans CJK SC").Output(); err == nil {
+		if p := strings.TrimSpace(string(out)); p != "" && p != "nil" {
+			if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+				return p, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("未找到中文字体文件，请安装 fonts-noto-cjk（sudo apt install fonts-noto-cjk）")
 }
 
 // buildSourceFilters 构建单个源 + 场景项的滤镜链（crop → scale → 透明度）
