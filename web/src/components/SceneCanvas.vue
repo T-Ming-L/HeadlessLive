@@ -309,8 +309,11 @@ function onFpsChange() {
 // 预览
 async function startPreview() {
   try {
-    await api.previewStart(sc.value?.id, SCALE_MAX_W);
+    const r = await api.previewStart(sc.value?.id, SCALE_MAX_W);
     state.previewRunning = true;
+    if (r && r.warning && r.warning.length) {
+      toast(r.warning.join("；"), "error");
+    }
   } catch (e) {
     toast(e.message, "error");
   }

@@ -75,7 +75,7 @@ func (h *Handler) StartOutput(c *gin.Context) {
 		return
 	}
 
-	rs, err := h.buildSpec(sc)
+	rs, warnings, err := h.buildSpec(sc)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "场景渲染规格构建失败: " + err.Error()})
 		return
@@ -95,7 +95,11 @@ func (h *Handler) StartOutput(c *gin.Context) {
 		return
 	}
 	h.hub.BroadcastEvent("output_started", gin.H{"output_id": o.ID, "name": o.Name})
-	c.JSON(http.StatusOK, gin.H{"message": "输出已启动", "output_id": o.ID})
+	resp := gin.H{"message": "输出已启动", "output_id": o.ID}
+	if len(warnings) > 0 {
+		resp["warning"] = warnings
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // StopOutput 停止输出
@@ -124,7 +128,7 @@ func (h *Handler) StartPreview(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "没有可用的场景"})
 		return
 	}
-	rs, err := h.buildSpec(sc)
+	rs, warnings, err := h.buildSpec(sc)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "场景渲染规格构建失败: " + err.Error()})
 		return
@@ -140,7 +144,11 @@ func (h *Handler) StartPreview(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "预览已启动"})
+	resp := gin.H{"message": "预览已启动"}
+	if len(warnings) > 0 {
+		resp["warning"] = warnings
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // StopPreview 停止预览

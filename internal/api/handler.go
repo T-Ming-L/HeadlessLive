@@ -70,20 +70,25 @@ func (h *Handler) ensureBrowsers(rs *scene.RenderSpec) error {
 }
 
 // buildSpec 构建渲染规格。浏览器源无法启动时自动剔除（其余源照常渲染），
-// 避免 x11grab 连不上 :99 导致整个预览/推流失败。
-func (h *Handler) buildSpec(sc *model.Scene) (*scene.RenderSpec, error) {
+// 避免 x11grab 连不上 :99 导致整个预览/推流失败，并返回剔除原因供前端提示。
+func (h *Handler) buildSpec(sc *model.Scene) (*scene.RenderSpec, []string, error) {
 	rs, err := h.renderSpec(sc)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if h.browser == nil {
-		return rs, nil
+		return rs, nil, nil
 	}
 	if err := h.ensureBrowsers(rs); err != nil {
-		h.hub.BroadcastLog("[browser] ⚠️ " + err.Error() + "，本次已剔除浏览器源")
-		return h.renderSpecNoBrowser(sc)
+		msg := "浏览器源已剔除：" + err.Error()
+		h.hub.BroadcastLog("[browser] ⚠️ " + msg)
+		rs2, err2 := h.renderSpecNoBrowser(sc)
+		if err2 != nil {
+			return nil, nil, err2
+		}
+		return rs2, []string{msg}, nil
 	}
-	return rs, nil
+	return rs, nil, nil
 }
 
 // renderSpecNoBrowser 构建不含浏览器源的渲染规格

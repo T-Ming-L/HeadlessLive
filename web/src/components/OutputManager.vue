@@ -89,7 +89,10 @@ async function remove(o) {
 
 async function start(o) {
   try {
-    await api.startOutput(o.id);
+    const r = await api.startOutput(o.id);
+    if (r && r.warning && r.warning.length) {
+      toast(r.warning.join("；"), "error");
+    }
   } catch (e) {
     toast(e.message, "error");
   }

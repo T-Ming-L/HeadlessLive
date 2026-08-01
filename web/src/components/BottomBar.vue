@@ -70,7 +70,10 @@ async function start(o) {
       await api.previewStop();
       state.previewRunning = false;
     }
-    await api.startOutput(o.id);
+    const r = await api.startOutput(o.id);
+    if (r && r.warning && r.warning.length) {
+      toast(r.warning.join("；"), "error");
+    }
   } catch (e) {
     toast(e.message, "error");
   }
