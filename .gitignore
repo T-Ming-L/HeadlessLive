@@ -33,3 +33,7 @@ recordings/*
 # OS
 .DS_Store
 Thumbs.db
+
+# 调试临时脚本（勿提交）
+/*.ps1
+/*.txt
