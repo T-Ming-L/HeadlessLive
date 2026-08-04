@@ -454,19 +454,24 @@ func (rs *RenderSpec) buildFilter(w, h, fps int, videoItems []model.SceneItem,
 			// 直接透传
 			label = in.Label("a")
 		}
-		// 降噪：highpass 滤电流声/低频嗡声 + afftdn 频谱降噪（底噪）
+		// 降噪：高通滤极低频 + bandreject 陷波电源谐波(50/100Hz) + 双段 afftdn 频谱降噪
 		if in.Source != nil && in.Source.Denoise {
 			hp := in.Source.Highpass
 			if hp <= 0 {
-				hp = 80
+				hp = 60
 			}
 			nl := in.Source.NoiseLevel
 			if nl == 0 {
 				nl = -30
 			}
+			nl2 := nl + 10
+			if nl2 > -10 {
+				nl2 = -10
+			}
 			dn := fmt.Sprintf("[ad%d]", audioIdx)
-			chain = append(chain, fmt.Sprintf("%s highpass=f=%d,afftdn=nf=%.0f%s",
-				label, hp, nl, dn))
+			chain = append(chain, fmt.Sprintf(
+				"%s highpass=f=%d,bandreject=f=50:w=40,bandreject=f=100:w=40,afftdn=nf=%.0f,afftdn=nf=%.0f%s",
+				label, hp, nl, nl2, dn))
 			label = dn
 		}
 		audioLabels = append(audioLabels, label)
