@@ -400,7 +400,7 @@ async function doUpload(kind) {
                 type="number"
                 v-model.number="selectedSource.highpass"
                 @input="saveSource"
-                placeholder="80（滤电源嗡声）"
+                placeholder="60（滤电源嗡声）"
               />
             </div>
             <div class="field">

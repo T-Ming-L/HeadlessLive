@@ -62,7 +62,7 @@ type Source struct {
 	Channels    int     `json:"channels,omitempty" yaml:"channels,omitempty"`
 	Volume      float64 `json:"volume,omitempty" yaml:"volume,omitempty"` // 1.0 = 原始
 	Denoise     bool    `json:"denoise,omitempty" yaml:"denoise,omitempty"`         // 启用降噪（电流声/底噪）
-	Highpass    int     `json:"highpass,omitempty" yaml:"highpass,omitempty"`       // 高通截止 Hz，默认 80（滤电源嗡声）
+	Highpass    int     `json:"highpass,omitempty" yaml:"highpass,omitempty"`       // 高通截止 Hz，默认 60（滤电源嗡声）
 	NoiseLevel  float64 `json:"noise_level,omitempty" yaml:"noise_level,omitempty"` // afftdn 降噪强度 dB，默认 -30
 
 	// --- 图片/文字/媒体 ---
