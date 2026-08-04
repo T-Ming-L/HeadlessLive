@@ -464,9 +464,16 @@ func (rs *RenderSpec) buildFilter(w, h, fps int, videoItems []model.SceneItem,
 			if nl == 0 {
 				nl = -30
 			}
+			// afftdn 的 nf 参数合法范围 [-80, -20]，越界会导致滤镜初始化失败，必须钳制
+			if nl > -20 {
+				nl = -20
+			}
+			if nl < -80 {
+				nl = -80
+			}
 			nl2 := nl + 10
-			if nl2 > -10 {
-				nl2 = -10
+			if nl2 > -20 {
+				nl2 = -20
 			}
 			// 电流声集中在 50Hz 基频 + 整数谐波（100/150/200/250/300），逐条窄带陷波
 			notches := ""

@@ -265,8 +265,21 @@ func TestBuildDenoise(t *testing.T) {
 			t.Errorf("滤镜链缺少电源谐波陷波 %s: %s", f, rs.Filter)
 		}
 	}
-	if !strings.Contains(rs.Filter, "afftdn=nf=-25") || !strings.Contains(rs.Filter, "afftdn=nf=-15") {
+	if !strings.Contains(rs.Filter, "afftdn=nf=-25") || !strings.Contains(rs.Filter, "afftdn=nf=-20") {
 		t.Errorf("滤镜链缺少双段 afftdn: %s", rs.Filter)
+	}
+
+	// 越界 NoiseLevel 应被钳制到 afftdn 合法范围 [-80, -20]（-25+10=-15 超上限，应钳到 -20）
+	mic.NoiseLevel = -10
+	rs2, err := Build(sc, srcs)
+	if err != nil {
+		t.Fatalf("Build 失败: %v", err)
+	}
+	if strings.Contains(rs2.Filter, "afftdn=nf=-10") || strings.Contains(rs2.Filter, "afftdn=nf=-15") {
+		t.Errorf("越界 NoiseLevel 未钳制: %s", rs2.Filter)
+	}
+	if !strings.Contains(rs2.Filter, "afftdn=nf=-20") {
+		t.Errorf("越界 NoiseLevel 应钳制到 -20: %s", rs2.Filter)
 	}
 }
 
