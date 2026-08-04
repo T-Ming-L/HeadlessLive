@@ -385,6 +385,35 @@ async function doUpload(kind) {
             @input="saveSource"
           />
         </div>
+        <div class="field">
+          <label>降噪（电流声/底噪）</label>
+          <select v-model="selectedSource.denoise" @change="saveSource">
+            <option :value="false">关闭</option>
+            <option :value="true">开启</option>
+          </select>
+        </div>
+        <template v-if="selectedSource.denoise">
+          <div class="field-row">
+            <div class="field">
+              <label>高通截止 Hz</label
+              ><input
+                type="number"
+                v-model.number="selectedSource.highpass"
+                @input="saveSource"
+                placeholder="80（滤电源嗡声）"
+              />
+            </div>
+            <div class="field">
+              <label>降噪强度 dB</label
+              ><input
+                type="number"
+                v-model.number="selectedSource.noise_level"
+                @input="saveSource"
+                placeholder="-30"
+              />
+            </div>
+          </div>
+        </template>
       </template>
 
       <!-- 图片/媒体 -->

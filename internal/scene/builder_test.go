@@ -240,6 +240,30 @@ func TestBuildHiddenAndDisabled(t *testing.T) {
 	}
 }
 
+func TestBuildDenoise(t *testing.T) {
+	sc := &model.Scene{
+		ID: "s-dn", Name: "降噪", CanvasW: 1280, CanvasH: 720, FPS: 30,
+		Items: []model.SceneItem{
+			{SourceID: "cam", X: 0, Y: 0, Width: 1280, Height: 720, Opacity: 1.0, ZIndex: 0, Visible: true},
+		},
+	}
+	srcs := testSources()
+	mic := srcs["mic"]
+	mic.Denoise = true
+	mic.Highpass = 100
+	mic.NoiseLevel = -25
+	rs, err := Build(sc, srcs)
+	if err != nil {
+		t.Fatalf("Build 失败: %v", err)
+	}
+	if !strings.Contains(rs.Filter, "highpass=f=100") {
+		t.Errorf("滤镜链缺少 highpass: %s", rs.Filter)
+	}
+	if !strings.Contains(rs.Filter, "afftdn=nf=-25") {
+		t.Errorf("滤镜链缺少 afftdn: %s", rs.Filter)
+	}
+}
+
 func TestBuildOpacity(t *testing.T) {
 	sc := &model.Scene{
 		ID: "s4", Name: "透明度", CanvasW: 1920, CanvasH: 1080, FPS: 30,

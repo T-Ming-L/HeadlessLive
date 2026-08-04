@@ -438,7 +438,7 @@ func (rs *RenderSpec) buildFilter(w, h, fps int, videoItems []model.SceneItem,
 		videoCount++
 	}
 
-	// 音频：volume → amix
+	// 音频：volume → 降噪 → amix
 	audioLabels := make([]string, 0, len(audioInputs))
 	audioIdx := 0
 	for _, in := range audioInputs {
@@ -453,6 +453,21 @@ func (rs *RenderSpec) buildFilter(w, h, fps int, videoItems []model.SceneItem,
 		} else {
 			// 直接透传
 			label = in.Label("a")
+		}
+		// 降噪：highpass 滤电流声/低频嗡声 + afftdn 频谱降噪（底噪）
+		if in.Source != nil && in.Source.Denoise {
+			hp := in.Source.Highpass
+			if hp <= 0 {
+				hp = 80
+			}
+			nl := in.Source.NoiseLevel
+			if nl == 0 {
+				nl = -30
+			}
+			dn := fmt.Sprintf("[ad%d]", audioIdx)
+			chain = append(chain, fmt.Sprintf("%s highpass=f=%d,afftdn=nf=%.0f%s",
+				label, hp, nl, dn))
+			label = dn
 		}
 		audioLabels = append(audioLabels, label)
 		audioIdx++
