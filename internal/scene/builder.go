@@ -454,7 +454,7 @@ func (rs *RenderSpec) buildFilter(w, h, fps int, videoItems []model.SceneItem,
 			// 直接透传
 			label = in.Label("a")
 		}
-		// 降噪：高通滤极低频 + bandreject 陷波电源谐波(50/100Hz) + 双段 afftdn 频谱降噪
+		// 降噪：高通滤极低频 + 电源谐波陷波链(50~300Hz) + 双段 afftdn 频谱降噪
 		if in.Source != nil && in.Source.Denoise {
 			hp := in.Source.Highpass
 			if hp <= 0 {
@@ -468,10 +468,15 @@ func (rs *RenderSpec) buildFilter(w, h, fps int, videoItems []model.SceneItem,
 			if nl2 > -10 {
 				nl2 = -10
 			}
+			// 电流声集中在 50Hz 基频 + 整数谐波（100/150/200/250/300），逐条窄带陷波
+			notches := ""
+			for _, f := range []int{50, 100, 150, 200, 250, 300} {
+				notches += fmt.Sprintf(",bandreject=f=%d:w=20", f)
+			}
 			dn := fmt.Sprintf("[ad%d]", audioIdx)
 			chain = append(chain, fmt.Sprintf(
-				"%s highpass=f=%d,bandreject=f=50:w=40,bandreject=f=100:w=40,afftdn=nf=%.0f,afftdn=nf=%.0f%s",
-				label, hp, nl, nl2, dn))
+				"%s highpass=f=%d%s,afftdn=nf=%.0f,afftdn=nf=%.0f%s",
+				label, hp, notches, nl, nl2, dn))
 			label = dn
 		}
 		audioLabels = append(audioLabels, label)

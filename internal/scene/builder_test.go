@@ -259,8 +259,11 @@ func TestBuildDenoise(t *testing.T) {
 	if !strings.Contains(rs.Filter, "highpass=f=100") {
 		t.Errorf("滤镜链缺少 highpass: %s", rs.Filter)
 	}
-	if !strings.Contains(rs.Filter, "bandreject=f=50") || !strings.Contains(rs.Filter, "bandreject=f=100") {
-		t.Errorf("滤镜链缺少 50/100Hz 陷波: %s", rs.Filter)
+	for _, f := range []string{"bandreject=f=50", "bandreject=f=100", "bandreject=f=150",
+		"bandreject=f=200", "bandreject=f=250", "bandreject=f=300"} {
+		if !strings.Contains(rs.Filter, f) {
+			t.Errorf("滤镜链缺少电源谐波陷波 %s: %s", f, rs.Filter)
+		}
 	}
 	if !strings.Contains(rs.Filter, "afftdn=nf=-25") || !strings.Contains(rs.Filter, "afftdn=nf=-15") {
 		t.Errorf("滤镜链缺少双段 afftdn: %s", rs.Filter)
