@@ -471,17 +471,20 @@ func (rs *RenderSpec) buildFilter(w, h, fps int, videoItems []model.SceneItem,
 			if nl < -80 {
 				nl = -80
 			}
-			// 电流声集中在 50/100/150Hz（电源基频+整流纹波），逐条窄带陷波；
-			// 更高谐波(200Hz+)能量极弱，且正好落在男声基频区，陷掉会出"电音"，故不处理
+			nl2 := nl + 10
+			if nl2 > -20 {
+				nl2 = -20
+			}
+			// 电流声集中在 50Hz 基频 + 整数谐波（100/150/200/250/300），逐条窄带陷波
 			notches := ""
-			for _, f := range []int{50, 100, 150} {
+			for _, f := range []int{50, 100, 150, 200, 250, 300} {
 				notches += fmt.Sprintf(",bandreject=f=%d:w=20", f)
 			}
-			// 单段 afftdn 频谱降噪（双段叠加会残留"电音/水声"伪影）
+			// 双段 afftdn 频谱降噪（第二段自动弱 10dB，叠加压低底噪）
 			dn := fmt.Sprintf("[ad%d]", audioIdx)
 			chain = append(chain, fmt.Sprintf(
-				"%s highpass=f=%d%s,afftdn=nf=%.0f%s",
-				label, hp, notches, nl, dn))
+				"%s highpass=f=%d%s,afftdn=nf=%.0f,afftdn=nf=%.0f%s",
+				label, hp, notches, nl, nl2, dn))
 			label = dn
 		}
 		audioLabels = append(audioLabels, label)
